@@ -55,6 +55,10 @@ The MVP seeds this local account in SQLite. Password management is not included 
 
 Electron stores the application's data under the operating system's per-user application-data directory, in a `data/` subdirectory:
 
+To open the folder in Finder, choose Go → Go to Folder… and enter:
+~/Library/Application Support/Tender Desk/data/
+
+
 - `data/database.sqlite`
 - `data/tenders/{tender-id}/documents/`
 - `data/tenders/{tender-id}/bills/{bill-id}/`
