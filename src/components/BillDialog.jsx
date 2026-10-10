@@ -1,21 +1,64 @@
 import { useEffect, useState } from 'react';
-import { errorMessage, todayDate, useApi } from '../App.jsx';
+import { errorMessage, money, todayDate, useApi } from '../App.jsx';
+import { calculateBill } from '../utils/billing.js';
 import AppError from './ErrorNotice.jsx';
 import AmountInput from './AmountInput.jsx';
+import PercentInput from './PercentInput.jsx';
 
-const blankBill = () => ({
+const blankBill = (projectRebate = 0) => ({
   bill_name: '',
   bill_date: todayDate(),
   description: '',
+  bill_type: 'Running bill',
+  work_done_amount: '0',
+  culture_cess_percent: '1',
+  rebate_percent: String(projectRebate ?? 2),
+  escalation_type: 'None',
+  escalation_amount: '0',
+  security_percent: '5',
+  cgst_percent: '1',
+  sgst_percent: '1',
+  income_tax_percent: '2',
+  labour_cess_percent: '1',
+  construction_cess_percent: '1',
+  tpa_amount: '0',
+  withheld_amount: '0',
+  other_deduction_type: '',
+  other_deduction_description: '',
+  other_deduction_amount: '0',
   hold_amount: '0',
   amount_received: '0',
+  received_date: '',
+  cheque_number: '',
 });
 
-export default function BillDialog({ tenderId, bill, onClose, onSaved }) {
+const percentFields = [
+  ['culture_cess_percent', 'Culture cess rate'],
+  ['rebate_percent', 'Rebate rate'],
+  ['security_percent', 'Security deduction'],
+  ['cgst_percent', 'CGST'],
+  ['sgst_percent', 'SGST'],
+  ['income_tax_percent', 'Income tax'],
+  ['labour_cess_percent', 'Labour cess'],
+  ['construction_cess_percent', 'Construction cess'],
+];
+
+function BillAmount({ label, value, emphasize = false }) {
+  return <div className={`bill-calculation-row ${emphasize ? 'emphasize' : ''}`}><span>{label}</span><strong>{money(value)}</strong></div>;
+}
+
+export default function BillDialog({ tenderId, bill, projectRebate = 0, onClose, onSaved }) {
   const api = useApi();
-  const [values, setValues] = useState(bill ? { ...bill } : blankBill());
+  const [values, setValues] = useState(() => bill
+    ? { ...blankBill(projectRebate), ...bill }
+    : blankBill(projectRebate));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const calculation = calculateBill(values);
+
+  useEffect(() => {
+    setValues(bill ? { ...blankBill(projectRebate), ...bill } : blankBill(projectRebate));
+  }, [bill, projectRebate]);
 
   useEffect(() => {
     const escape = (event) => event.key === 'Escape' && onClose();
@@ -23,7 +66,10 @@ export default function BillDialog({ tenderId, bill, onClose, onSaved }) {
     return () => window.removeEventListener('keydown', escape);
   }, [onClose]);
 
-  const update = (event) => setValues({ ...values, [event.target.name]: event.target.value });
+  const update = (event) => {
+    const { name, value } = event.target;
+    setValues({ ...values, [name]: name === 'cheque_number' ? value.toUpperCase() : value });
+  };
   const updateAmount = (name, value) => setValues({ ...values, [name]: value });
   async function submit(event) {
     event.preventDefault();
@@ -45,20 +91,79 @@ export default function BillDialog({ tenderId, bill, onClose, onSaved }) {
 
   return (
     <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-      <section className="modal-card" role="dialog" aria-modal="true" aria-labelledby="bill-dialog-title">
+      <section className="modal-card bill-dialog-card" role="dialog" aria-modal="true" aria-labelledby="bill-dialog-title">
         <div className="modal-heading">
           <div><p className="eyebrow">TENDER BILL</p><h2 id="bill-dialog-title">{bill ? 'Edit bill' : 'Add a bill'}</h2></div>
           <button className="icon-button" onClick={onClose} aria-label="Close">×</button>
         </div>
         <AppError>{error}</AppError>
+        <div className="bill-quick-summary" aria-live="polite">
+          <div><span>Gross amount</span><strong>{money(calculation.gross)}</strong></div>
+          <div><span>Total deductions</span><strong>{money(calculation.totalDeduction)}</strong></div>
+          <div><span>Net payable</span><strong>{money(calculation.netPayable)}</strong></div>
+        </div>
         <form onSubmit={submit}>
-          <div className="form-grid">
-            <label className="field field-wide"><span>Bill name <b>*</b></span><input autoFocus name="bill_name" value={values.bill_name} onChange={update} maxLength={200} required placeholder="e.g. Foundation work — Bill 01" /></label>
-            <label className="field field-wide"><span>Bill date <b>*</b></span><input type="date" name="bill_date" value={values.bill_date} onChange={update} required /></label>
-            <label className="field field-wide"><span>Description</span><textarea name="description" value={values.description} onChange={update} rows="3" maxLength={2000} placeholder="Optional notes about this bill" /></label>
-            <label className="field"><span>Hold amount</span><AmountInput name="hold_amount" value={values.hold_amount} onChange={updateAmount} /></label>
-            <label className="field"><span>Amount received</span><AmountInput name="amount_received" value={values.amount_received} onChange={updateAmount} /></label>
-          </div>
+          <section className="bill-form-section">
+            <h3>Bill information</h3>
+            <div className="form-grid">
+              <label className="field"><span>Bill type</span><select name="bill_type" value={values.bill_type} onChange={update}><option>Running bill</option><option>Final bill</option><option>Advance bill</option><option>Other</option></select></label>
+              <label className="field"><span>Bill name <b>*</b></span><input autoFocus name="bill_name" value={values.bill_name} onChange={update} maxLength={200} required placeholder="e.g. Running Bill 01" /></label>
+              <label className="field"><span>Bill date <b>*</b></span><input type="date" name="bill_date" value={values.bill_date} onChange={update} required /></label>
+              <label className="field field-wide"><span>Description</span><textarea name="description" value={values.description} onChange={update} rows="2" maxLength={2000} placeholder="Optional notes about this bill" /></label>
+              <label className="field field-wide"><span>Total work done as per Measurement Book (MB)</span><AmountInput name="work_done_amount" value={values.work_done_amount} onChange={updateAmount} /></label>
+            </div>
+          </section>
+
+          <section className="bill-form-section">
+            <h3>Running bill calculation</h3>
+            <p className="bill-section-help">Rates from the reference sheet are filled in as editable starting values. Confirm each rate against the contract.</p>
+            <div className="form-grid">
+              {percentFields.slice(0, 2).map(([name, label]) => (
+                <label className="field" key={name}><span>{label}</span><PercentInput name={name} value={values[name]} onChange={updateAmount} /></label>
+              ))}
+              <label className="field"><span>Escalation adjustment</span><select name="escalation_type" value={values.escalation_type} onChange={update}><option>None</option><option>Add</option><option>Deduct</option></select></label>
+              <label className="field"><span>Escalation amount</span><AmountInput name="escalation_amount" value={values.escalation_amount} onChange={updateAmount} /></label>
+            </div>
+            <div className="bill-calculation-summary">
+              <BillAmount label="Total work done as per MB" value={calculation.workDone} />
+              <BillAmount label={`Culture cess (${values.culture_cess_percent || 0}%)`} value={calculation.cultureCess} />
+              <BillAmount label="Total before rebate" value={calculation.totalBeforeRebate} />
+              <BillAmount label={`Rebate (${values.rebate_percent || 0}%)`} value={calculation.rebate} />
+              <BillAmount label="Amount after rebate" value={calculation.amountAfterRebate} />
+              <BillAmount label={`Escalation (${values.escalation_type})`} value={calculation.escalationAdjustment} />
+              <BillAmount label="Gross amount after escalation" value={calculation.gross} emphasize />
+            </div>
+          </section>
+
+          <section className="bill-form-section">
+            <h3>Deductions</h3>
+            <div className="form-grid">
+              {percentFields.slice(2).map(([name, label]) => (
+                <label className="field" key={name}><span>{label}</span><PercentInput name={name} value={values[name]} onChange={updateAmount} /></label>
+              ))}
+              <label className="field"><span>TPA amount</span><AmountInput name="tpa_amount" value={values.tpa_amount} onChange={updateAmount} /></label>
+              <label className="field"><span>Withheld amount</span><AmountInput name="withheld_amount" value={values.withheld_amount} onChange={updateAmount} /></label>
+              <label className="field"><span>Other deduction type</span><select name="other_deduction_type" value={values.other_deduction_type} onChange={update}><option value="">None</option><option>Penalty</option><option>Water charges</option><option>Material recovery</option><option>Other</option></select></label>
+              {values.other_deduction_type === 'Other' && <label className="field"><span>Other deduction details</span><input name="other_deduction_description" value={values.other_deduction_description || ''} onChange={update} maxLength={200} placeholder="Describe this deduction" /></label>}
+              <label className="field"><span>Other deduction amount</span><AmountInput name="other_deduction_amount" value={values.other_deduction_amount} onChange={updateAmount} /></label>
+            </div>
+            <div className="bill-calculation-summary">
+              {calculation.deductions.map((deduction) => <BillAmount key={deduction.label} label={deduction.label} value={deduction.amount} />)}
+              <BillAmount label="Total deduction" value={calculation.totalDeduction} emphasize />
+              <BillAmount label="Net payable amount" value={calculation.netPayable} emphasize />
+            </div>
+          </section>
+
+          <section className="bill-form-section">
+            <h3>Hold and payment received</h3>
+            <div className="form-grid">
+              <label className="field"><span>Amount on hold</span><AmountInput name="hold_amount" value={values.hold_amount} onChange={updateAmount} /><small>Enter the amount being tracked as held separately from the calculated deductions.</small></label>
+              <label className="field"><span>Amount received</span><AmountInput name="amount_received" value={values.amount_received} onChange={updateAmount} /></label>
+              <label className="field"><span>Date received</span><input type="date" name="received_date" value={values.received_date || ''} onChange={update} /></label>
+              <label className="field"><span>Cheque / transaction number</span><input className="uppercase-input" name="cheque_number" value={values.cheque_number} onChange={update} maxLength={120} /></label>
+            </div>
+          </section>
+
           {!bill && <p className="form-hint">You can choose multiple bill documents after saving.</p>}
           <div className="modal-actions">
             <button type="button" className="button button-light" onClick={onClose}>Cancel</button>

@@ -18,6 +18,41 @@ const emptyTender = () => ({
   tender_fee: '0',
   work_order_number: '',
   status: 'Preparing bid',
+  work_code: '',
+  quoted_rate: '0',
+  rebate_percent: '2',
+  stipulated_months: '0',
+  allotment_date: '',
+  extension_date_1: '',
+  extension_date_2: '',
+  extension_date_3: '',
+  bank_guarantee_number: '',
+  bank_guarantee_amount: '0',
+  bank_guarantee_issue_date: '',
+  bank_guarantee_expiry_date: '',
+  bank_guarantee_extension_date_1: '',
+  bank_guarantee_extension_date_2: '',
+  bank_guarantee_extension_date_3: '',
+  fdr_number: '',
+  fdr_amount: '0',
+  fdr_bank: '',
+  fdr_issue_date: '',
+  fdr_maturity_date: '',
+  insurance_number: '',
+  insurance_provider: '',
+  insurance_issue_date: '',
+  insurance_amount: '0',
+  insurance_payment_release_date: '',
+});
+
+const uppercaseTenderReferences = (values) => ({
+  ...values,
+  tender_reference: values.tender_reference?.toUpperCase() || '',
+  work_code: values.work_code?.toUpperCase() || '',
+  work_order_number: values.work_order_number?.toUpperCase() || '',
+  bank_guarantee_number: values.bank_guarantee_number?.toUpperCase() || '',
+  fdr_number: values.fdr_number?.toUpperCase() || '',
+  insurance_number: values.insurance_number?.toUpperCase() || '',
 });
 
 export default function TenderForm() {
@@ -34,7 +69,7 @@ export default function TenderForm() {
     if (!editing) return;
     let active = true;
     api.tenders.getById(id)
-      .then((tender) => active && setValues({
+      .then((tender) => active && setValues(uppercaseTenderReferences({
         tender_name: tender.tender_name,
         tender_reference: tender.tender_reference || '',
         department: tender.department || '',
@@ -48,7 +83,32 @@ export default function TenderForm() {
         tender_fee: String(tender.tender_fee || 0),
         work_order_number: tender.work_order_number || '',
         status: tender.status || 'Not set',
-      }))
+        work_code: tender.work_code || '',
+        quoted_rate: String(tender.quoted_rate || 0),
+        rebate_percent: String(tender.rebate_percent || 0),
+        stipulated_months: String(tender.stipulated_months || 0),
+        allotment_date: tender.allotment_date || '',
+        extension_date_1: tender.extension_date_1 || '',
+        extension_date_2: tender.extension_date_2 || '',
+        extension_date_3: tender.extension_date_3 || '',
+        bank_guarantee_number: tender.bank_guarantee_number || '',
+        bank_guarantee_amount: String(tender.bank_guarantee_amount || 0),
+        bank_guarantee_issue_date: tender.bank_guarantee_issue_date || '',
+        bank_guarantee_expiry_date: tender.bank_guarantee_expiry_date || '',
+        bank_guarantee_extension_date_1: tender.bank_guarantee_extension_date_1 || '',
+        bank_guarantee_extension_date_2: tender.bank_guarantee_extension_date_2 || '',
+        bank_guarantee_extension_date_3: tender.bank_guarantee_extension_date_3 || '',
+        fdr_number: tender.fdr_number || '',
+        fdr_amount: String(tender.fdr_amount || 0),
+        fdr_bank: tender.fdr_bank || '',
+        fdr_issue_date: tender.fdr_issue_date || '',
+        fdr_maturity_date: tender.fdr_maturity_date || '',
+        insurance_number: tender.insurance_number || '',
+        insurance_provider: tender.insurance_provider || '',
+        insurance_issue_date: tender.insurance_issue_date || '',
+        insurance_amount: String(tender.insurance_amount || 0),
+        insurance_payment_release_date: tender.insurance_payment_release_date || '',
+      })))
       .catch((loadError) => active && setError(errorMessage(loadError)))
       .finally(() => active && setLoading(false));
     return () => { active = false; };
@@ -60,10 +120,10 @@ export default function TenderForm() {
     setSaving(true);
     try {
       if (editing) {
-        await api.tenders.update(id, values);
+        await api.tenders.update(id, uppercaseTenderReferences(values));
         navigate(`/tenders/${id}`);
       } else {
-        const tender = await api.tenders.create(values);
+        const tender = await api.tenders.create(uppercaseTenderReferences(values));
         navigate(`/tenders/${tender.id}`, { state: { uploadTenderId: tender.id } });
       }
     } catch (saveError) {

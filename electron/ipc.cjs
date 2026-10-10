@@ -43,10 +43,31 @@ function optionalDate(value, label) {
   return assertDate(value, label);
 }
 
+function assertPercent(value, label) {
+  const number = Number(value ?? 0);
+  if (!Number.isFinite(number) || number < 0 || number > 100) {
+    throw new Error(`${label} must be between 0 and 100%.`);
+  }
+  return number;
+}
+
+function assertMonths(value, label) {
+  const months = Number(value ?? 0);
+  if (!Number.isInteger(months) || months < 0 || months > 1200) {
+    throw new Error(`${label} must be a whole number of months between 0 and 1200.`);
+  }
+  return months;
+}
+
 function validateTender(values) {
   const tenderDate = assertDate(values?.tender_date, 'Tender date');
   const completionDate = assertDate(values?.completion_date, 'Completion date');
   const submissionDeadline = optionalDate(values?.submission_deadline, 'Bid submission deadline');
+  const bankGuaranteeIssueDate = optionalDate(values?.bank_guarantee_issue_date, 'Bank guarantee issue date');
+  const bankGuaranteeExpiryDate = optionalDate(values?.bank_guarantee_expiry_date, 'Bank guarantee expiry date');
+  if (bankGuaranteeIssueDate && bankGuaranteeExpiryDate && bankGuaranteeExpiryDate < bankGuaranteeIssueDate) {
+    throw new Error('Bank guarantee expiry date cannot be before its issue date.');
+  }
   if (completionDate < tenderDate) throw new Error('Completion date cannot be before tender date.');
   if (submissionDeadline && submissionDeadline < tenderDate) {
     throw new Error('Bid submission deadline cannot be before the tender notice date.');
@@ -71,16 +92,69 @@ function validateTender(values) {
     tender_fee: assertAmount(values?.tender_fee ?? 0, 'Tender fee'),
     work_order_number: optionalText(values?.work_order_number, 'Work order number', 120),
     status,
+    work_code: optionalText(values?.work_code, 'Work code', 120),
+    quoted_rate: assertAmount(values?.quoted_rate ?? 0, 'Quoted rate'),
+    rebate_percent: assertPercent(values?.rebate_percent ?? 0, 'Project rebate'),
+    stipulated_months: assertMonths(values?.stipulated_months ?? 0, 'Stipulated completion time'),
+    allotment_date: optionalDate(values?.allotment_date, 'Date of allotment') || null,
+    extension_date_1: optionalDate(values?.extension_date_1, 'Project extension date 1') || null,
+    extension_date_2: optionalDate(values?.extension_date_2, 'Project extension date 2') || null,
+    extension_date_3: optionalDate(values?.extension_date_3, 'Project extension date 3') || null,
+    bank_guarantee_number: optionalText(values?.bank_guarantee_number, 'Bank guarantee number', 120),
+    bank_guarantee_amount: assertAmount(values?.bank_guarantee_amount ?? 0, 'Bank guarantee amount'),
+    bank_guarantee_issue_date: bankGuaranteeIssueDate || null,
+    bank_guarantee_expiry_date: bankGuaranteeExpiryDate || null,
+    bank_guarantee_extension_date_1: optionalDate(values?.bank_guarantee_extension_date_1, 'Bank guarantee extension date 1') || null,
+    bank_guarantee_extension_date_2: optionalDate(values?.bank_guarantee_extension_date_2, 'Bank guarantee extension date 2') || null,
+    bank_guarantee_extension_date_3: optionalDate(values?.bank_guarantee_extension_date_3, 'Bank guarantee extension date 3') || null,
+    fdr_number: optionalText(values?.fdr_number, 'FDR number', 120),
+    fdr_amount: assertAmount(values?.fdr_amount ?? 0, 'FDR amount'),
+    fdr_bank: optionalText(values?.fdr_bank, 'FDR bank', 120),
+    fdr_issue_date: optionalDate(values?.fdr_issue_date, 'FDR issue date') || null,
+    fdr_maturity_date: optionalDate(values?.fdr_maturity_date, 'FDR maturity date') || null,
+    insurance_number: optionalText(values?.insurance_number, 'Insurance number', 120),
+    insurance_provider: optionalText(values?.insurance_provider, 'Insurance provider', 120),
+    insurance_issue_date: optionalDate(values?.insurance_issue_date, 'Insurance issue date') || null,
+    insurance_amount: assertAmount(values?.insurance_amount ?? 0, 'Insurance amount'),
+    insurance_payment_release_date: optionalDate(values?.insurance_payment_release_date, 'Insurance payment release date') || null,
   };
 }
 
 function validateBill(values) {
+  const billTypes = ['Running bill', 'Final bill', 'Advance bill', 'Other'];
+  const escalationTypes = ['None', 'Add', 'Deduct'];
+  const deductionTypes = ['', 'Penalty', 'Water charges', 'Material recovery', 'Other'];
+  const billType = values?.bill_type || 'Running bill';
+  const escalationType = values?.escalation_type || 'None';
+  const deductionType = values?.other_deduction_type || '';
+  if (!billTypes.includes(billType)) throw new Error('Choose a valid bill type.');
+  if (!escalationTypes.includes(escalationType)) throw new Error('Choose a valid escalation adjustment.');
+  if (!deductionTypes.includes(deductionType)) throw new Error('Choose a valid other deduction type.');
   return {
     bill_name: assertText(values?.bill_name, 'Bill name'),
     bill_date: assertDate(values?.bill_date, 'Bill date'),
     description: typeof values?.description === 'string' ? values.description.trim().slice(0, 2000) : '',
     hold_amount: assertAmount(values?.hold_amount ?? 0, 'Hold amount'),
     amount_received: assertAmount(values?.amount_received ?? 0, 'Amount received'),
+    bill_type: billType,
+    work_done_amount: assertAmount(values?.work_done_amount ?? 0, 'Work done amount'),
+    culture_cess_percent: assertPercent(values?.culture_cess_percent ?? 0, 'Culture cess'),
+    rebate_percent: assertPercent(values?.rebate_percent ?? 0, 'Bill rebate'),
+    escalation_type: escalationType,
+    escalation_amount: assertAmount(values?.escalation_amount ?? 0, 'Escalation amount'),
+    security_percent: assertPercent(values?.security_percent ?? 0, 'Security deduction'),
+    cgst_percent: assertPercent(values?.cgst_percent ?? 0, 'CGST'),
+    sgst_percent: assertPercent(values?.sgst_percent ?? 0, 'SGST'),
+    income_tax_percent: assertPercent(values?.income_tax_percent ?? 0, 'Income tax'),
+    labour_cess_percent: assertPercent(values?.labour_cess_percent ?? 0, 'Labour cess'),
+    construction_cess_percent: assertPercent(values?.construction_cess_percent ?? 0, 'Construction cess'),
+    tpa_amount: assertAmount(values?.tpa_amount ?? 0, 'TPA deduction'),
+    withheld_amount: assertAmount(values?.withheld_amount ?? 0, 'Withheld amount'),
+    other_deduction_type: deductionType,
+    other_deduction_description: optionalText(values?.other_deduction_description, 'Other deduction details', 200),
+    other_deduction_amount: assertAmount(values?.other_deduction_amount ?? 0, 'Other deduction'),
+    received_date: optionalDate(values?.received_date, 'Payment received date') || null,
+    cheque_number: optionalText(values?.cheque_number, 'Cheque number', 120),
   };
 }
 
@@ -118,8 +192,9 @@ function registerIpc(db, dataDirectory) {
       const parameters = [];
       if (search) {
         conditions.push(`(t.tender_name LIKE ? OR t.id LIKE ? OR t.tender_reference LIKE ?
-          OR t.department LIKE ? OR t.work_location LIKE ? OR t.work_order_number LIKE ?)`);
-        parameters.push(...Array(6).fill(`%${search}%`));
+          OR t.department LIKE ? OR t.work_location LIKE ? OR t.work_order_number LIKE ?
+          OR t.work_code LIKE ?)`);
+        parameters.push(...Array(7).fill(`%${search}%`));
       }
       if (filter === 'active') {
         conditions.push('t.completion_date >= ? AND t.tender_date <= ?');
@@ -177,12 +252,26 @@ function registerIpc(db, dataDirectory) {
           INSERT INTO tenders (
             id, tender_name, tender_date, completion_date, bidding_amount, tender_reference,
             department, work_location, work_scope, submission_deadline, emd_amount, tender_fee,
-            work_order_number, status
+            work_order_number, status, work_code, quoted_rate, rebate_percent, stipulated_months,
+            allotment_date, extension_date_1, extension_date_2, extension_date_3,
+            bank_guarantee_number, bank_guarantee_amount, bank_guarantee_issue_date,
+            bank_guarantee_expiry_date, bank_guarantee_extension_date_1,
+            bank_guarantee_extension_date_2, bank_guarantee_extension_date_3,
+            fdr_number, fdr_amount, fdr_bank, fdr_issue_date, fdr_maturity_date,
+            insurance_number, insurance_provider, insurance_issue_date, insurance_amount,
+            insurance_payment_release_date
           )
           VALUES (
             @id, @tender_name, @tender_date, @completion_date, @bidding_amount, @tender_reference,
             @department, @work_location, @work_scope, @submission_deadline, @emd_amount, @tender_fee,
-            @work_order_number, @status
+            @work_order_number, @status, @work_code, @quoted_rate, @rebate_percent, @stipulated_months,
+            @allotment_date, @extension_date_1, @extension_date_2, @extension_date_3,
+            @bank_guarantee_number, @bank_guarantee_amount, @bank_guarantee_issue_date,
+            @bank_guarantee_expiry_date, @bank_guarantee_extension_date_1,
+            @bank_guarantee_extension_date_2, @bank_guarantee_extension_date_3,
+            @fdr_number, @fdr_amount, @fdr_bank, @fdr_issue_date, @fdr_maturity_date,
+            @insurance_number, @insurance_provider, @insurance_issue_date, @insurance_amount,
+            @insurance_payment_release_date
           )
         `).run({ ...tender, id });
       } catch (error) {
@@ -202,6 +291,21 @@ function registerIpc(db, dataDirectory) {
             work_location = @work_location, work_scope = @work_scope,
             submission_deadline = @submission_deadline, emd_amount = @emd_amount,
             tender_fee = @tender_fee, work_order_number = @work_order_number, status = @status,
+            work_code = @work_code, quoted_rate = @quoted_rate, rebate_percent = @rebate_percent,
+            stipulated_months = @stipulated_months, allotment_date = @allotment_date,
+            extension_date_1 = @extension_date_1, extension_date_2 = @extension_date_2,
+            extension_date_3 = @extension_date_3, bank_guarantee_number = @bank_guarantee_number,
+            bank_guarantee_amount = @bank_guarantee_amount,
+            bank_guarantee_issue_date = @bank_guarantee_issue_date,
+            bank_guarantee_expiry_date = @bank_guarantee_expiry_date,
+            bank_guarantee_extension_date_1 = @bank_guarantee_extension_date_1,
+            bank_guarantee_extension_date_2 = @bank_guarantee_extension_date_2,
+            bank_guarantee_extension_date_3 = @bank_guarantee_extension_date_3,
+            fdr_number = @fdr_number, fdr_amount = @fdr_amount, fdr_bank = @fdr_bank,
+            fdr_issue_date = @fdr_issue_date, fdr_maturity_date = @fdr_maturity_date,
+            insurance_number = @insurance_number, insurance_provider = @insurance_provider,
+            insurance_issue_date = @insurance_issue_date, insurance_amount = @insurance_amount,
+            insurance_payment_release_date = @insurance_payment_release_date,
             updated_at = CURRENT_TIMESTAMP WHERE id = @id
         `).run({ ...tender, id: assertText(id, 'Tender ID', 80) });
         if (!result.changes) throw new Error('Tender not found.');
@@ -225,7 +329,7 @@ function registerIpc(db, dataDirectory) {
       const pageSize = Math.min(50, Math.max(1, Math.floor(Number(options.pageSize) || 10)));
       const total = db.prepare('SELECT COUNT(*) AS total FROM bills WHERE tender_id = ?').get(id).total;
       const rows = db.prepare(`
-        SELECT b.id, b.bill_name, b.bill_date, b.description, b.hold_amount, b.amount_received,
+        SELECT b.*,
           (SELECT COUNT(*) FROM bill_files f WHERE f.bill_id = b.id) AS file_count
         FROM bills b WHERE b.tender_id = ?
         ORDER BY b.bill_date DESC, b.created_at DESC
@@ -236,11 +340,16 @@ function registerIpc(db, dataDirectory) {
       }
       return { rows, total, page, pageSize };
     },
+    'bills:getById': (_event, billId) => {
+      const bill = db.prepare('SELECT * FROM bills WHERE id = ?').get(assertText(billId, 'Bill ID', 80));
+      if (!bill) throw new Error('Bill not found.');
+      return bill;
+    },
     'bills:getStatement': (_event, tenderId) => {
       const id = assertText(tenderId, 'Tender ID', 80);
       if (!db.prepare('SELECT id FROM tenders WHERE id = ?').get(id)) throw new Error('Tender not found.');
       return db.prepare(`
-        SELECT id, bill_name, bill_date, description, hold_amount, amount_received
+        SELECT *
         FROM bills
         WHERE tender_id = ?
         ORDER BY bill_date ASC, created_at ASC
@@ -254,8 +363,22 @@ function registerIpc(db, dataDirectory) {
       try {
         fs.mkdirSync(path.join(dataDirectory, 'tenders', parent, 'bills', id), { recursive: true });
         db.prepare(`
-          INSERT INTO bills (id, tender_id, bill_name, bill_date, description, hold_amount, amount_received)
-          VALUES (@id, @tender_id, @bill_name, @bill_date, @description, @hold_amount, @amount_received)
+          INSERT INTO bills (
+            id, tender_id, bill_name, bill_date, description, hold_amount, amount_received,
+            bill_type, work_done_amount, culture_cess_percent, rebate_percent,
+            escalation_type, escalation_amount, security_percent, cgst_percent, sgst_percent,
+            income_tax_percent, labour_cess_percent, construction_cess_percent, tpa_amount,
+            withheld_amount, other_deduction_type, other_deduction_description,
+            other_deduction_amount, received_date, cheque_number
+          )
+          VALUES (
+            @id, @tender_id, @bill_name, @bill_date, @description, @hold_amount, @amount_received,
+            @bill_type, @work_done_amount, @culture_cess_percent, @rebate_percent,
+            @escalation_type, @escalation_amount, @security_percent, @cgst_percent, @sgst_percent,
+            @income_tax_percent, @labour_cess_percent, @construction_cess_percent, @tpa_amount,
+            @withheld_amount, @other_deduction_type, @other_deduction_description,
+            @other_deduction_amount, @received_date, @cheque_number
+          )
         `).run({ ...bill, id, tender_id: parent });
       } catch (error) {
         fs.rmSync(path.join(dataDirectory, 'tenders', parent, 'bills', id), { recursive: true, force: true });
@@ -268,6 +391,16 @@ function registerIpc(db, dataDirectory) {
       const result = db.prepare(`
         UPDATE bills SET bill_name = @bill_name, bill_date = @bill_date, description = @description,
           hold_amount = @hold_amount, amount_received = @amount_received,
+          bill_type = @bill_type, work_done_amount = @work_done_amount,
+          culture_cess_percent = @culture_cess_percent, rebate_percent = @rebate_percent,
+          escalation_type = @escalation_type, escalation_amount = @escalation_amount,
+          security_percent = @security_percent, cgst_percent = @cgst_percent, sgst_percent = @sgst_percent,
+          income_tax_percent = @income_tax_percent, labour_cess_percent = @labour_cess_percent,
+          construction_cess_percent = @construction_cess_percent, tpa_amount = @tpa_amount,
+          withheld_amount = @withheld_amount, other_deduction_type = @other_deduction_type,
+          other_deduction_description = @other_deduction_description,
+          other_deduction_amount = @other_deduction_amount, received_date = @received_date,
+          cheque_number = @cheque_number,
           updated_at = CURRENT_TIMESTAMP WHERE id = @id
       `).run({ ...bill, id: assertText(id, 'Bill ID', 80) });
       if (!result.changes) throw new Error('Bill not found.');

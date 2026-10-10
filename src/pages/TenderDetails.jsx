@@ -6,6 +6,7 @@ import Pagination from '../components/Pagination.jsx';
 import BillDialog from '../components/BillDialog.jsx';
 import FileShortNameDialog from '../components/FileShortNameDialog.jsx';
 import BillFilesDialog from '../components/BillFilesDialog.jsx';
+import { calculateBill } from '../utils/billing.js';
 
 const PAGE_SIZE = 10;
 
@@ -18,6 +19,7 @@ export default function TenderDetails() {
   const [billData, setBillData] = useState({ rows: [], total: 0, page: 1, pageSize: PAGE_SIZE });
   const [page, setPage] = useState(1);
   const [dialog, setDialog] = useState(null);
+  const [editingBillId, setEditingBillId] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState(location.state?.notice || '');
   const [loading, setLoading] = useState(true);
@@ -98,6 +100,22 @@ export default function TenderDetails() {
     }
   }
 
+  async function editBill(bill) {
+    setEditingBillId(bill.id);
+    setError('');
+    try {
+      if (typeof api?.bills?.getById !== 'function') {
+        throw new Error('This desktop app version cannot load the saved bill calculations. Restart the latest development app or install a newly built version, then try again.');
+      }
+      const completeBill = await api.bills.getById(bill.id);
+      setDialog({ type: 'edit', bill: completeBill });
+    } catch (loadError) {
+      setError(errorMessage(loadError));
+    } finally {
+      setEditingBillId('');
+    }
+  }
+
   async function printStatement() {
     setPrinting(true);
     setError('');
@@ -138,10 +156,45 @@ export default function TenderDetails() {
                 <div className="info-item"><span>Notice / tender date</span><strong>{formatDate(tender.tender_date)}</strong></div>
                 <div className="info-item"><span>Bid submission deadline</span><strong>{formatDate(tender.submission_deadline)}</strong></div>
                 <div className="info-item"><span>Planned completion date</span><strong>{formatDate(tender.completion_date)}</strong></div>
+                <div className="info-item"><span>Stipulated completion time</span><strong>{tender.stipulated_months ? `${tender.stipulated_months} months` : 'Not entered'}</strong></div>
+                <div className="info-item"><span>Date of allotment</span><strong>{formatDate(tender.allotment_date)}</strong></div>
                 <div className="info-item"><span>Work order number</span><strong>{tender.work_order_number || 'Not entered'}</strong></div>
+                <div className="info-item"><span>Work code</span><strong>{tender.work_code || 'Not entered'}</strong></div>
+                <div className="info-item"><span>Quoted rate</span><strong>{money(tender.quoted_rate)}</strong></div>
+                <div className="info-item"><span>Project rebate rate</span><strong>{tender.rebate_percent}%</strong></div>
+                {[1, 2, 3].map((number) => tender[`extension_date_${number}`] && (
+                  <div className="info-item" key={`extension-${number}`}><span>Project extension date {number}</span><strong>{formatDate(tender[`extension_date_${number}`])}</strong></div>
+                ))}
               </div>
               {tender.work_scope && <div className="work-scope"><span>Work description</span><p>{tender.work_scope}</p></div>}
             </div>
+            <details className="detail-information-section detail-collapsible">
+              <summary><h3>Bank guarantee details</h3></summary>
+              <div className="info-grid">
+                <div className="info-item"><span>Bank guarantee number</span><strong>{tender.bank_guarantee_number || 'Not entered'}</strong></div>
+                <div className="info-item"><span>Bank guarantee amount</span><strong>{money(tender.bank_guarantee_amount)}</strong></div>
+                <div className="info-item"><span>Date of issue</span><strong>{formatDate(tender.bank_guarantee_issue_date)}</strong></div>
+                <div className="info-item"><span>Date of expiry</span><strong>{formatDate(tender.bank_guarantee_expiry_date)}</strong></div>
+                {[1, 2, 3].map((number) => tender[`bank_guarantee_extension_date_${number}`] && (
+                  <div className="info-item" key={`bg-extension-${number}`}><span>Guarantee extension date {number}</span><strong>{formatDate(tender[`bank_guarantee_extension_date_${number}`])}</strong></div>
+                ))}
+              </div>
+            </details>
+            <details className="detail-information-section detail-collapsible">
+              <summary><h3>FDR details</h3></summary>
+              <div className="info-grid">
+                <div className="info-item"><span>FDR number</span><strong>{tender.fdr_number || 'Not entered'}</strong></div>
+                <div className="info-item"><span>FDR amount</span><strong>{money(tender.fdr_amount)}</strong></div>
+                <div className="info-item"><span>Bank / branch</span><strong>{tender.fdr_bank || 'Not entered'}</strong></div>
+                <div className="info-item"><span>FDR issue date</span><strong>{formatDate(tender.fdr_issue_date)}</strong></div>
+                <div className="info-item"><span>FDR maturity date</span><strong>{formatDate(tender.fdr_maturity_date)}</strong></div>
+                <div className="info-item"><span>Insurance policy number</span><strong>{tender.insurance_number || 'Not entered'}</strong></div>
+                <div className="info-item"><span>Insurance provider</span><strong>{tender.insurance_provider || 'Not entered'}</strong></div>
+                <div className="info-item"><span>Insurance issue date</span><strong>{formatDate(tender.insurance_issue_date)}</strong></div>
+                <div className="info-item"><span>Insurance amount</span><strong>{money(tender.insurance_amount)}</strong></div>
+                <div className="info-item"><span>Insurance payment release date</span><strong>{formatDate(tender.insurance_payment_release_date)}</strong></div>
+              </div>
+            </details>
             <div className="detail-information-section detail-amounts">
               <h3>Tender amounts</h3>
               <div className="info-grid">
@@ -173,16 +226,20 @@ export default function TenderDetails() {
         </div>
         <div className="table-scroll">
           <table>
-            <thead><tr><th>BILL NAME</th><th>DATE</th><th>DESCRIPTION</th><th>HOLD AMOUNT</th><th>AMOUNT RECEIVED</th><th>FILES</th><th /></tr></thead>
+            <thead><tr><th>BILL / TYPE</th><th>DATE</th><th>DESCRIPTION</th><th>NET PAYABLE</th><th>HOLD AMOUNT</th><th>AMOUNT RECEIVED</th><th>FILES</th><th /></tr></thead>
             <tbody>
-              {loading ? <tr><td colSpan="7" className="table-message">Loading bills…</td></tr>
-                : billData.rows.length === 0 ? <tr><td colSpan="7"><div className="empty-state compact"><span className="empty-icon">▧</span><strong>No bills recorded yet</strong><p>Add a bill to start tracking payments and supporting documents.</p><button className="button button-light button-small" onClick={() => setDialog({ type: 'new' })}>＋ Add first bill</button></div></td></tr>
+              {loading ? <tr><td colSpan="8" className="table-message">Loading bills…</td></tr>
+                : billData.rows.length === 0 ? <tr><td colSpan="8"><div className="empty-state compact"><span className="empty-icon">▧</span><strong>No bills recorded yet</strong><p>Add a bill to start tracking payments and supporting documents.</p><button className="button button-light button-small" onClick={() => setDialog({ type: 'new' })}>＋ Add first bill</button></div></td></tr>
                 : billData.rows.map((bill) => <tr key={bill.id}>
-                  <td><strong className="bill-title">{bill.bill_name}</strong><span className="table-subtext">{bill.id}</span></td>
+                  <td><strong className="bill-title">{bill.bill_name}</strong><span className="table-subtext">{bill.bill_type} · {bill.id}</span></td>
                   <td>{formatDate(bill.bill_date)}</td><td className="description-cell" title={bill.description}>{bill.description || '—'}</td>
-                  <td className="amount-cell">{money(bill.hold_amount)}</td><td className="amount-cell">{money(bill.amount_received)}</td>
+                  <td className="amount-cell">{money(calculateBill(bill).netPayable)}</td>
+                  <td className="amount-cell">{money(bill.hold_amount)}</td>
+                  <td className="amount-cell">{money(bill.amount_received)}
+                    {(bill.received_date || bill.cheque_number) && <span className="table-subtext">{bill.received_date ? formatDate(bill.received_date) : ''}{bill.received_date && bill.cheque_number ? ' · ' : ''}{bill.cheque_number ? `Chq: ${bill.cheque_number}` : ''}</span>}
+                  </td>
                   <td><div className="bill-row-doc-actions"><button className="view-bill-files" onClick={() => setBillFilesDialog(bill)}>View files <span>{bill.files.length}</span></button><button className="add-file-inline" onClick={() => setFileUpload({ ownerId: bill.id, kind: 'bill' })}>+ Add</button></div></td>
-                  <td><div className="row-actions"><button onClick={() => setDialog({ type: 'edit', bill })}>Edit</button><button className="delete-action" onClick={() => removeBill(bill)}>Delete</button></div></td>
+                  <td><div className="row-actions"><button onClick={() => editBill(bill)} disabled={editingBillId === bill.id}>{editingBillId === bill.id ? 'Loading…' : 'Edit'}</button><button className="delete-action" onClick={() => removeBill(bill)}>Delete</button></div></td>
                 </tr>)}
             </tbody>
           </table>
@@ -217,15 +274,17 @@ export default function TenderDetails() {
         </section>
         <h3 className="print-table-heading">Bill-wise status</h3>
         <table className="print-bill-table">
-          <thead><tr><th>#</th><th>Bill name</th><th>Bill date</th><th>Description</th><th>Amount on hold</th><th>Amount received</th></tr></thead>
+          <thead><tr><th>Bill name / type</th><th>Bill date</th><th>Description</th><th>Net payable</th><th>Amount on hold</th><th>Amount received</th><th>Payment date / cheque no.</th></tr></thead>
           <tbody>
-            {printBills.length === 0 ? <tr><td colSpan="6" className="print-no-bills">No bills recorded for this project.</td></tr>
-              : printBills.map((bill, index) => <tr key={bill.id}>
-                <td>{index + 1}</td><td>{bill.bill_name}</td><td>{formatDate(bill.bill_date)}</td>
-                <td>{bill.description || '—'}</td><td>{money(bill.hold_amount)}</td><td>{money(bill.amount_received)}</td>
+            {printBills.length === 0 ? <tr><td colSpan="7" className="print-no-bills">No bills recorded for this project.</td></tr>
+              : printBills.map((bill) => <tr key={bill.id}>
+                <td>{bill.bill_name}<br />{bill.bill_type}</td><td>{formatDate(bill.bill_date)}</td>
+                <td>{bill.description || '—'}</td><td>{money(calculateBill(bill).netPayable)}</td>
+                <td>{money(bill.hold_amount)}</td><td>{money(bill.amount_received)}</td>
+                <td>{bill.received_date ? formatDate(bill.received_date) : '—'}{bill.cheque_number ? ` / ${bill.cheque_number}` : ''}</td>
               </tr>)}
           </tbody>
-          {printBills.length > 0 && <tfoot><tr><th colSpan="4">Bill totals</th><th>{money(printBills.reduce((sum, bill) => sum + bill.hold_amount, 0))}</th><th>{money(printBills.reduce((sum, bill) => sum + bill.amount_received, 0))}</th></tr></tfoot>}
+          {printBills.length > 0 && <tfoot><tr><th colSpan="3">Bill totals</th><th>{money(printBills.reduce((sum, bill) => sum + calculateBill(bill).netPayable, 0))}</th><th>{money(printBills.reduce((sum, bill) => sum + bill.hold_amount, 0))}</th><th>{money(printBills.reduce((sum, bill) => sum + bill.amount_received, 0))}</th><th /></tr></tfoot>}
         </table>
         <p className="print-note">This statement is a project record prepared from the locally maintained tender and bill register.</p>
         <footer className="print-signatures">
@@ -234,7 +293,7 @@ export default function TenderDetails() {
           <div><span>Department / client verification</span><i /><strong>Name, signature and date</strong></div>
         </footer>
       </article>}
-      {dialog && <BillDialog tenderId={id} bill={dialog.bill} onClose={() => setDialog(null)} onSaved={(result) => {
+      {dialog && <BillDialog tenderId={id} bill={dialog.bill} projectRebate={tender.rebate_percent} onClose={() => setDialog(null)} onSaved={(result) => {
         setDialog(null);
         setPage(1);
         load();

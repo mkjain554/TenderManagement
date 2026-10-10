@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld('tenderDesk', {
   },
   bills: {
     list: (tenderId, options) => invoke('bills:list', tenderId, options),
+    getById: (id) => invoke('bills:getById', id),
     getStatement: (tenderId) => invoke('bills:getStatement', tenderId),
     create: (tenderId, bill) => invoke('bills:create', tenderId, bill),
     update: (id, bill) => invoke('bills:update', id, bill),

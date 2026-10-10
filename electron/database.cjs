@@ -34,6 +34,31 @@ function createDatabase(dataDirectory) {
       tender_fee REAL NOT NULL DEFAULT 0 CHECK (tender_fee >= 0),
       work_order_number TEXT NOT NULL DEFAULT '',
       status TEXT NOT NULL DEFAULT 'Not set',
+      work_code TEXT NOT NULL DEFAULT '',
+      quoted_rate REAL NOT NULL DEFAULT 0 CHECK (quoted_rate >= 0),
+      rebate_percent REAL NOT NULL DEFAULT 0 CHECK (rebate_percent >= 0),
+      stipulated_months INTEGER NOT NULL DEFAULT 0 CHECK (stipulated_months >= 0),
+      allotment_date TEXT,
+      extension_date_1 TEXT,
+      extension_date_2 TEXT,
+      extension_date_3 TEXT,
+      bank_guarantee_number TEXT NOT NULL DEFAULT '',
+      bank_guarantee_amount REAL NOT NULL DEFAULT 0 CHECK (bank_guarantee_amount >= 0),
+      bank_guarantee_issue_date TEXT,
+      bank_guarantee_expiry_date TEXT,
+      bank_guarantee_extension_date_1 TEXT,
+      bank_guarantee_extension_date_2 TEXT,
+      bank_guarantee_extension_date_3 TEXT,
+      fdr_number TEXT NOT NULL DEFAULT '',
+      fdr_amount REAL NOT NULL DEFAULT 0 CHECK (fdr_amount >= 0),
+      fdr_bank TEXT NOT NULL DEFAULT '',
+      fdr_issue_date TEXT,
+      fdr_maturity_date TEXT,
+      insurance_number TEXT NOT NULL DEFAULT '',
+      insurance_provider TEXT NOT NULL DEFAULT '',
+      insurance_issue_date TEXT,
+      insurance_amount REAL NOT NULL DEFAULT 0 CHECK (insurance_amount >= 0),
+      insurance_payment_release_date TEXT,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
@@ -53,6 +78,25 @@ function createDatabase(dataDirectory) {
       description TEXT NOT NULL DEFAULT '',
       hold_amount REAL NOT NULL DEFAULT 0 CHECK (hold_amount >= 0),
       amount_received REAL NOT NULL DEFAULT 0 CHECK (amount_received >= 0),
+      bill_type TEXT NOT NULL DEFAULT 'Running bill',
+      work_done_amount REAL NOT NULL DEFAULT 0 CHECK (work_done_amount >= 0),
+      culture_cess_percent REAL NOT NULL DEFAULT 1 CHECK (culture_cess_percent >= 0),
+      rebate_percent REAL NOT NULL DEFAULT 2 CHECK (rebate_percent >= 0),
+      escalation_type TEXT NOT NULL DEFAULT 'None',
+      escalation_amount REAL NOT NULL DEFAULT 0 CHECK (escalation_amount >= 0),
+      security_percent REAL NOT NULL DEFAULT 5 CHECK (security_percent >= 0),
+      cgst_percent REAL NOT NULL DEFAULT 1 CHECK (cgst_percent >= 0),
+      sgst_percent REAL NOT NULL DEFAULT 1 CHECK (sgst_percent >= 0),
+      income_tax_percent REAL NOT NULL DEFAULT 2 CHECK (income_tax_percent >= 0),
+      labour_cess_percent REAL NOT NULL DEFAULT 1 CHECK (labour_cess_percent >= 0),
+      construction_cess_percent REAL NOT NULL DEFAULT 1 CHECK (construction_cess_percent >= 0),
+      tpa_amount REAL NOT NULL DEFAULT 0 CHECK (tpa_amount >= 0),
+      withheld_amount REAL NOT NULL DEFAULT 0 CHECK (withheld_amount >= 0),
+      other_deduction_type TEXT NOT NULL DEFAULT '',
+      other_deduction_description TEXT NOT NULL DEFAULT '',
+      other_deduction_amount REAL NOT NULL DEFAULT 0 CHECK (other_deduction_amount >= 0),
+      received_date TEXT,
+      cheque_number TEXT NOT NULL DEFAULT '',
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
@@ -77,6 +121,31 @@ function createDatabase(dataDirectory) {
     ['tender_fee', 'REAL NOT NULL DEFAULT 0 CHECK (tender_fee >= 0)'],
     ['work_order_number', "TEXT NOT NULL DEFAULT ''"],
     ['status', "TEXT NOT NULL DEFAULT 'Not set'"],
+    ['work_code', "TEXT NOT NULL DEFAULT ''"],
+    ['quoted_rate', 'REAL NOT NULL DEFAULT 0 CHECK (quoted_rate >= 0)'],
+    ['rebate_percent', 'REAL NOT NULL DEFAULT 0 CHECK (rebate_percent >= 0)'],
+    ['stipulated_months', 'INTEGER NOT NULL DEFAULT 0 CHECK (stipulated_months >= 0)'],
+    ['allotment_date', 'TEXT'],
+    ['extension_date_1', 'TEXT'],
+    ['extension_date_2', 'TEXT'],
+    ['extension_date_3', 'TEXT'],
+    ['bank_guarantee_number', "TEXT NOT NULL DEFAULT ''"],
+    ['bank_guarantee_amount', 'REAL NOT NULL DEFAULT 0 CHECK (bank_guarantee_amount >= 0)'],
+    ['bank_guarantee_issue_date', 'TEXT'],
+    ['bank_guarantee_expiry_date', 'TEXT'],
+    ['bank_guarantee_extension_date_1', 'TEXT'],
+    ['bank_guarantee_extension_date_2', 'TEXT'],
+    ['bank_guarantee_extension_date_3', 'TEXT'],
+    ['fdr_number', "TEXT NOT NULL DEFAULT ''"],
+    ['fdr_amount', 'REAL NOT NULL DEFAULT 0 CHECK (fdr_amount >= 0)'],
+    ['fdr_bank', "TEXT NOT NULL DEFAULT ''"],
+    ['fdr_issue_date', 'TEXT'],
+    ['fdr_maturity_date', 'TEXT'],
+    ['insurance_number', "TEXT NOT NULL DEFAULT ''"],
+    ['insurance_provider', "TEXT NOT NULL DEFAULT ''"],
+    ['insurance_issue_date', 'TEXT'],
+    ['insurance_amount', 'REAL NOT NULL DEFAULT 0 CHECK (insurance_amount >= 0)'],
+    ['insurance_payment_release_date', 'TEXT'],
   ];
   const existingColumns = new Set(db.pragma('table_info(tenders)').map((column) => column.name));
   const migrateTenders = db.transaction(() => {
@@ -87,6 +156,37 @@ function createDatabase(dataDirectory) {
     }
   });
   migrateTenders();
+
+  const billColumns = [
+    ['bill_type', "TEXT NOT NULL DEFAULT 'Running bill'"],
+    ['work_done_amount', 'REAL NOT NULL DEFAULT 0 CHECK (work_done_amount >= 0)'],
+    ['culture_cess_percent', 'REAL NOT NULL DEFAULT 1 CHECK (culture_cess_percent >= 0)'],
+    ['rebate_percent', 'REAL NOT NULL DEFAULT 2 CHECK (rebate_percent >= 0)'],
+    ['escalation_type', "TEXT NOT NULL DEFAULT 'None'"],
+    ['escalation_amount', 'REAL NOT NULL DEFAULT 0 CHECK (escalation_amount >= 0)'],
+    ['security_percent', 'REAL NOT NULL DEFAULT 5 CHECK (security_percent >= 0)'],
+    ['cgst_percent', 'REAL NOT NULL DEFAULT 1 CHECK (cgst_percent >= 0)'],
+    ['sgst_percent', 'REAL NOT NULL DEFAULT 1 CHECK (sgst_percent >= 0)'],
+    ['income_tax_percent', 'REAL NOT NULL DEFAULT 2 CHECK (income_tax_percent >= 0)'],
+    ['labour_cess_percent', 'REAL NOT NULL DEFAULT 1 CHECK (labour_cess_percent >= 0)'],
+    ['construction_cess_percent', 'REAL NOT NULL DEFAULT 1 CHECK (construction_cess_percent >= 0)'],
+    ['tpa_amount', 'REAL NOT NULL DEFAULT 0 CHECK (tpa_amount >= 0)'],
+    ['withheld_amount', 'REAL NOT NULL DEFAULT 0 CHECK (withheld_amount >= 0)'],
+    ['other_deduction_type', "TEXT NOT NULL DEFAULT ''"],
+    ['other_deduction_description', "TEXT NOT NULL DEFAULT ''"],
+    ['other_deduction_amount', 'REAL NOT NULL DEFAULT 0 CHECK (other_deduction_amount >= 0)'],
+    ['received_date', 'TEXT'],
+    ['cheque_number', "TEXT NOT NULL DEFAULT ''"],
+  ];
+  const existingBillColumns = new Set(db.pragma('table_info(bills)').map((column) => column.name));
+  const migrateBills = db.transaction(() => {
+    for (const [name, definition] of billColumns) {
+      if (!existingBillColumns.has(name)) {
+        db.exec(`ALTER TABLE bills ADD COLUMN ${name} ${definition}`);
+      }
+    }
+  });
+  migrateBills();
 
   for (const table of ['tender_files', 'bill_files']) {
     const columns = new Set(db.pragma(`table_info(${table})`).map((column) => column.name));
