@@ -5,11 +5,12 @@ import AppError from './ErrorNotice.jsx';
 import AmountInput from './AmountInput.jsx';
 import PercentInput from './PercentInput.jsx';
 
-const blankBill = (projectRebate = 0) => ({
+const blankBill = (projectRebate = 0, projectNames = [], billType = 'Construction bill') => ({
   bill_name: '',
+  project_name: projectNames[0] || '',
   bill_date: todayDate(),
   description: '',
-  bill_type: 'Running bill',
+  bill_type: billType,
   work_done_amount: '0',
   culture_cess_percent: '1',
   rebate_percent: String(projectRebate ?? 2),
@@ -40,25 +41,25 @@ const percentFields = [
   ['sgst_percent', 'SGST'],
   ['income_tax_percent', 'Income tax'],
   ['labour_cess_percent', 'Labour cess'],
-  ['construction_cess_percent', 'Construction cess'],
+  ['construction_cess_percent', 'Culture Cess'],
 ];
 
 function BillAmount({ label, value, emphasize = false }) {
   return <div className={`bill-calculation-row ${emphasize ? 'emphasize' : ''}`}><span>{label}</span><strong>{money(value)}</strong></div>;
 }
 
-export default function BillDialog({ tenderId, bill, projectRebate = 0, onClose, onSaved }) {
+export default function BillDialog({ tenderId, bill, projectNames = [], applyGst = true, projectRebate = 0, defaultBillType = 'Construction bill', onClose, onSaved }) {
   const api = useApi();
   const [values, setValues] = useState(() => bill
-    ? { ...blankBill(projectRebate), ...bill }
-    : blankBill(projectRebate));
+    ? { ...blankBill(projectRebate, projectNames, defaultBillType), ...bill }
+    : blankBill(projectRebate, projectNames, defaultBillType));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const calculation = calculateBill(values);
+  const calculation = calculateBill(values, applyGst);
 
   useEffect(() => {
-    setValues(bill ? { ...blankBill(projectRebate), ...bill } : blankBill(projectRebate));
-  }, [bill, projectRebate]);
+    setValues(bill ? { ...blankBill(projectRebate, projectNames, defaultBillType), ...bill } : blankBill(projectRebate, projectNames, defaultBillType));
+  }, [bill, defaultBillType, projectNames, projectRebate]);
 
   useEffect(() => {
     const escape = (event) => event.key === 'Escape' && onClose();
@@ -106,8 +107,9 @@ export default function BillDialog({ tenderId, bill, projectRebate = 0, onClose,
           <section className="bill-form-section">
             <h3>Bill information</h3>
             <div className="form-grid">
-              <label className="field"><span>Bill type</span><select name="bill_type" value={values.bill_type} onChange={update}><option>Running bill</option><option>Final bill</option><option>Advance bill</option><option>Other</option></select></label>
+              <label className="field"><span>Bill type</span><select name="bill_type" value={values.bill_type} onChange={update}><option>Construction bill</option><option>Maintenance bill</option></select></label>
               <label className="field"><span>Bill name <b>*</b></span><input autoFocus name="bill_name" value={values.bill_name} onChange={update} maxLength={200} required placeholder="e.g. Running Bill 01" /></label>
+              <label className="field"><span>Project name <b>*</b></span><select name="project_name" value={values.project_name} onChange={update} required>{projectNames.map((projectName) => <option key={projectName}>{projectName}</option>)}{!projectNames.includes(values.project_name) && <option>{values.project_name}</option>}</select></label>
               <label className="field"><span>Bill date <b>*</b></span><input type="date" name="bill_date" value={values.bill_date} onChange={update} required /></label>
               <label className="field field-wide"><span>Description</span><textarea name="description" value={values.description} onChange={update} rows="2" maxLength={2000} placeholder="Optional notes about this bill" /></label>
               <label className="field field-wide"><span>Total work done as per Measurement Book (MB)</span><AmountInput name="work_done_amount" value={values.work_done_amount} onChange={updateAmount} /></label>
@@ -115,7 +117,7 @@ export default function BillDialog({ tenderId, bill, projectRebate = 0, onClose,
           </section>
 
           <section className="bill-form-section">
-            <h3>Running bill calculation</h3>
+            <h3>Bill calculation</h3>
             <p className="bill-section-help">Rates from the reference sheet are filled in as editable starting values. Confirm each rate against the contract.</p>
             <div className="form-grid">
               {percentFields.slice(0, 2).map(([name, label]) => (
@@ -138,7 +140,7 @@ export default function BillDialog({ tenderId, bill, projectRebate = 0, onClose,
           <section className="bill-form-section">
             <h3>Deductions</h3>
             <div className="form-grid">
-              {percentFields.slice(2).map(([name, label]) => (
+              {percentFields.slice(2).filter(([name]) => applyGst || (name !== 'cgst_percent' && name !== 'sgst_percent')).map(([name, label]) => (
                 <label className="field" key={name}><span>{label}</span><PercentInput name={name} value={values[name]} onChange={updateAmount} /></label>
               ))}
               <label className="field"><span>TPA amount</span><AmountInput name="tpa_amount" value={values.tpa_amount} onChange={updateAmount} /></label>

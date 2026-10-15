@@ -24,7 +24,7 @@ export default function Login() {
     } catch (loginError) {
       const message = errorMessage(loginError);
       setError(message.includes('Invalid username or password')
-        ? 'Username or password does not match. First-time local login: username admin, password admin123.'
+        ? 'Username or password does not match. Hint: username admin, password a*mi****.'
         : message);
       setLoading(false);
     }

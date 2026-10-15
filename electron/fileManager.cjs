@@ -18,8 +18,10 @@ function createFileManager(db, dataDirectory) {
   async function selectFiles(ownerId, kind) {
     const owner = kind === 'tender'
       ? db.prepare('SELECT id FROM tenders WHERE id = ?').get(ownerId)
-      : db.prepare('SELECT id, tender_id FROM bills WHERE id = ?').get(ownerId);
-    if (!owner) throw new Error(kind === 'tender' ? 'Tender not found.' : 'Bill not found.');
+      : kind === 'bill'
+        ? db.prepare('SELECT id, tender_id FROM bills WHERE id = ?').get(ownerId)
+        : db.prepare('SELECT id FROM project_completions WHERE id = ?').get(ownerId);
+    if (!owner) throw new Error(kind === 'tender' ? 'Tender not found.' : kind === 'bill' ? 'Bill not found.' : 'Project completion not found.');
 
     const result = await dialog.showOpenDialog({
       properties: ['openFile', 'multiSelections'],
@@ -46,15 +48,19 @@ function createFileManager(db, dataDirectory) {
 
     const owner = selection.kind === 'tender'
       ? db.prepare('SELECT id FROM tenders WHERE id = ?').get(ownerId)
-      : db.prepare('SELECT id, tender_id FROM bills WHERE id = ?').get(ownerId);
-    if (!owner) throw new Error(selection.kind === 'tender' ? 'Tender not found.' : 'Bill not found.');
+      : selection.kind === 'bill'
+        ? db.prepare('SELECT id, tender_id FROM bills WHERE id = ?').get(ownerId)
+        : db.prepare('SELECT id, tender_id FROM project_completions WHERE id = ?').get(ownerId);
+    if (!owner) throw new Error(selection.kind === 'tender' ? 'Tender not found.' : selection.kind === 'bill' ? 'Bill not found.' : 'Project completion not found.');
     const relativeFolder = selection.kind === 'tender'
       ? path.join('tenders', ownerId, 'documents')
-      : path.join('tenders', owner.tender_id, 'bills', ownerId);
+      : selection.kind === 'bill'
+        ? path.join('tenders', owner.tender_id, 'bills', ownerId)
+        : path.join('tenders', owner.tender_id, 'completions', ownerId);
     const folder = resolveStoredPath(relativeFolder);
     fs.mkdirSync(folder, { recursive: true });
-    const table = selection.kind === 'tender' ? 'tender_files' : 'bill_files';
-    const ownerColumn = selection.kind === 'tender' ? 'tender_id' : 'bill_id';
+    const table = selection.kind === 'tender' ? 'tender_files' : selection.kind === 'bill' ? 'bill_files' : 'project_completion_files';
+    const ownerColumn = selection.kind === 'tender' ? 'tender_id' : selection.kind === 'bill' ? 'bill_id' : 'completion_id';
     const fileName = selection.fileName;
     let storedName = fileName;
     let target = path.join(folder, storedName);
@@ -86,13 +92,16 @@ function createFileManager(db, dataDirectory) {
       SELECT id, short_name, file_name, file_path FROM tender_files WHERE id = ?
       UNION ALL
       SELECT id, short_name, file_name, file_path FROM bill_files WHERE id = ?
+      UNION ALL
+      SELECT id, short_name, file_name, file_path FROM project_completion_files WHERE id = ?
       LIMIT 1
-    `).get(fileId, fileId);
+    `).get(fileId, fileId, fileId);
   }
 
   return {
     selectTenderFiles: (tenderId) => selectFiles(tenderId, 'tender'),
     selectBillFiles: (billId) => selectFiles(billId, 'bill'),
+    selectCompletionFiles: (completionId) => selectFiles(completionId, 'completion'),
     saveSelectedFile,
     discardSelectedFile(token) {
       return pendingUploads.delete(token);
@@ -130,6 +139,7 @@ function createFileManager(db, dataDirectory) {
       if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
       db.prepare('DELETE FROM tender_files WHERE id = ?').run(fileId);
       db.prepare('DELETE FROM bill_files WHERE id = ?').run(fileId);
+      db.prepare('DELETE FROM project_completion_files WHERE id = ?').run(fileId);
       return true;
     },
     removeTenderFolder(tenderId) {

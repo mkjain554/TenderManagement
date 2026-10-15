@@ -1,6 +1,7 @@
 const { ipcMain } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
+const crypto = require('node:crypto');
 const { verifyPassword } = require('./database.cjs');
 const { createFileManager } = require('./fileManager.cjs');
 
@@ -63,11 +64,6 @@ function validateTender(values) {
   const tenderDate = assertDate(values?.tender_date, 'Tender date');
   const completionDate = assertDate(values?.completion_date, 'Completion date');
   const submissionDeadline = optionalDate(values?.submission_deadline, 'Bid submission deadline');
-  const bankGuaranteeIssueDate = optionalDate(values?.bank_guarantee_issue_date, 'Bank guarantee issue date');
-  const bankGuaranteeExpiryDate = optionalDate(values?.bank_guarantee_expiry_date, 'Bank guarantee expiry date');
-  if (bankGuaranteeIssueDate && bankGuaranteeExpiryDate && bankGuaranteeExpiryDate < bankGuaranteeIssueDate) {
-    throw new Error('Bank guarantee expiry date cannot be before its issue date.');
-  }
   if (completionDate < tenderDate) throw new Error('Completion date cannot be before tender date.');
   if (submissionDeadline && submissionDeadline < tenderDate) {
     throw new Error('Bid submission deadline cannot be before the tender notice date.');
@@ -78,8 +74,53 @@ function validateTender(values) {
   const statuses = ['Not set', 'Preparing bid', 'Submitted', 'Awarded', 'Not awarded', 'In progress', 'Completed', 'Cancelled'];
   const status = values?.status || 'Preparing bid';
   if (!statuses.includes(status)) throw new Error('Choose a valid tender status.');
+  const tenderName = assertText(values?.tender_name, 'Tender name');
+  const projectNames = Array.isArray(values?.project_names)
+    ? values.project_names.map((name, index) => assertText(name, `Project name ${index + 1}`, 200))
+    : [tenderName];
+  if (projectNames.length === 0 || projectNames.length > 50) {
+    throw new Error('Add between 1 and 50 project names.');
+  }
+  if (new Set(projectNames.map((name) => name.toLocaleLowerCase())).size !== projectNames.length) {
+    throw new Error('Project names must be unique within a tender.');
+  }
+  if (![true, false, 0, 1].includes(values?.apply_gst ?? false)) {
+    throw new Error('Choose whether GST applies to this tender.');
+  }
+  const emdAmount = assertAmount(values?.emd_amount ?? 0, 'EMD amount');
+  const emdRefundedAmount = assertAmount(values?.emd_refunded_amount ?? 0, 'EMD refund received');
+  if (emdRefundedAmount > emdAmount) throw new Error('EMD refund received cannot exceed the EMD amount.');
+  if (!Array.isArray(values?.bank_guarantees) || values.bank_guarantees.length > 50) {
+    throw new Error('Bank guarantee details must contain no more than 50 records.');
+  }
+  const bankGuarantees = values.bank_guarantees.map((guarantee, index) => {
+    const label = `Bank guarantee ${index + 1}`;
+    const issueDate = optionalDate(guarantee?.bank_guarantee_issue_date, `${label} issue date`);
+    const expiryDate = optionalDate(guarantee?.bank_guarantee_expiry_date, `${label} expiry date`);
+    if (issueDate && expiryDate && expiryDate < issueDate) {
+      throw new Error(`${label} expiry date cannot be before its issue date.`);
+    }
+    return {
+      bank_guarantee_number: optionalText(guarantee?.bank_guarantee_number, `${label} number`, 120),
+      bank_guarantee_amount: assertAmount(guarantee?.bank_guarantee_amount ?? 0, `${label} amount`),
+      bank_guarantee_issue_date: issueDate || null,
+      bank_guarantee_expiry_date: expiryDate || null,
+      bank_guarantee_extension_date_1: optionalDate(guarantee?.bank_guarantee_extension_date_1, `${label} extension date 1`) || null,
+      bank_guarantee_extension_date_2: optionalDate(guarantee?.bank_guarantee_extension_date_2, `${label} extension date 2`) || null,
+      bank_guarantee_extension_date_3: optionalDate(guarantee?.bank_guarantee_extension_date_3, `${label} extension date 3`) || null,
+      bank_guarantee_released_date: optionalDate(guarantee?.bank_guarantee_released_date, `${label} released date`) || null,
+      security_instrument_number: optionalText(guarantee?.security_instrument_number, `FDR / Insurance ${index + 1} number`, 120),
+      security_instrument_amount: assertAmount(guarantee?.security_instrument_amount ?? 0, `FDR / Insurance ${index + 1} amount`),
+      security_instrument_institution: optionalText(guarantee?.security_instrument_institution, `FDR / Insurance ${index + 1} bank or provider`, 120),
+      security_instrument_issue_date: optionalDate(guarantee?.security_instrument_issue_date, `FDR / Insurance ${index + 1} issue date`) || null,
+      security_instrument_maturity_date: optionalDate(guarantee?.security_instrument_maturity_date, `FDR / Insurance ${index + 1} maturity or expiry date`) || null,
+      security_instrument_release_date: optionalDate(guarantee?.security_instrument_release_date, `FDR / Insurance ${index + 1} release date`) || null,
+    };
+  });
   return {
-    tender_name: assertText(values?.tender_name, 'Tender name'),
+    tender_name: tenderName,
+    project_names: projectNames,
+    apply_gst: values?.apply_gst ? 1 : 0,
     tender_date: tenderDate,
     completion_date: completionDate,
     bidding_amount: assertAmount(values?.bidding_amount, 'Bidding amount'),
@@ -88,7 +129,8 @@ function validateTender(values) {
     work_location: optionalText(values?.work_location, 'Work location', 200),
     work_scope: optionalText(values?.work_scope, 'Work description', 2000),
     submission_deadline: submissionDeadline || null,
-    emd_amount: assertAmount(values?.emd_amount ?? 0, 'EMD amount'),
+    emd_amount: emdAmount,
+    emd_refunded_amount: emdRefundedAmount,
     tender_fee: assertAmount(values?.tender_fee ?? 0, 'Tender fee'),
     work_order_number: optionalText(values?.work_order_number, 'Work order number', 120),
     status,
@@ -100,38 +142,25 @@ function validateTender(values) {
     extension_date_1: optionalDate(values?.extension_date_1, 'Project extension date 1') || null,
     extension_date_2: optionalDate(values?.extension_date_2, 'Project extension date 2') || null,
     extension_date_3: optionalDate(values?.extension_date_3, 'Project extension date 3') || null,
-    bank_guarantee_number: optionalText(values?.bank_guarantee_number, 'Bank guarantee number', 120),
-    bank_guarantee_amount: assertAmount(values?.bank_guarantee_amount ?? 0, 'Bank guarantee amount'),
-    bank_guarantee_issue_date: bankGuaranteeIssueDate || null,
-    bank_guarantee_expiry_date: bankGuaranteeExpiryDate || null,
-    bank_guarantee_extension_date_1: optionalDate(values?.bank_guarantee_extension_date_1, 'Bank guarantee extension date 1') || null,
-    bank_guarantee_extension_date_2: optionalDate(values?.bank_guarantee_extension_date_2, 'Bank guarantee extension date 2') || null,
-    bank_guarantee_extension_date_3: optionalDate(values?.bank_guarantee_extension_date_3, 'Bank guarantee extension date 3') || null,
-    fdr_number: optionalText(values?.fdr_number, 'FDR number', 120),
-    fdr_amount: assertAmount(values?.fdr_amount ?? 0, 'FDR amount'),
-    fdr_bank: optionalText(values?.fdr_bank, 'FDR bank', 120),
-    fdr_issue_date: optionalDate(values?.fdr_issue_date, 'FDR issue date') || null,
-    fdr_maturity_date: optionalDate(values?.fdr_maturity_date, 'FDR maturity date') || null,
-    insurance_number: optionalText(values?.insurance_number, 'Insurance number', 120),
-    insurance_provider: optionalText(values?.insurance_provider, 'Insurance provider', 120),
-    insurance_issue_date: optionalDate(values?.insurance_issue_date, 'Insurance issue date') || null,
-    insurance_amount: assertAmount(values?.insurance_amount ?? 0, 'Insurance amount'),
-    insurance_payment_release_date: optionalDate(values?.insurance_payment_release_date, 'Insurance payment release date') || null,
+    bank_guarantees: bankGuarantees,
   };
 }
 
-function validateBill(values) {
-  const billTypes = ['Running bill', 'Final bill', 'Advance bill', 'Other'];
+function validateBill(values, projectNames) {
+  const billTypes = ['Construction bill', 'Maintenance bill'];
   const escalationTypes = ['None', 'Add', 'Deduct'];
   const deductionTypes = ['', 'Penalty', 'Water charges', 'Material recovery', 'Other'];
-  const billType = values?.bill_type || 'Running bill';
+  const billType = values?.bill_type || 'Construction bill';
   const escalationType = values?.escalation_type || 'None';
   const deductionType = values?.other_deduction_type || '';
   if (!billTypes.includes(billType)) throw new Error('Choose a valid bill type.');
   if (!escalationTypes.includes(escalationType)) throw new Error('Choose a valid escalation adjustment.');
   if (!deductionTypes.includes(deductionType)) throw new Error('Choose a valid other deduction type.');
+  const projectName = assertText(values?.project_name, 'Project name', 200);
+  if (!projectNames.includes(projectName)) throw new Error('Choose a project listed under this tender.');
   return {
     bill_name: assertText(values?.bill_name, 'Bill name'),
+    project_name: projectName,
     bill_date: assertDate(values?.bill_date, 'Bill date'),
     description: typeof values?.description === 'string' ? values.description.trim().slice(0, 2000) : '',
     hold_amount: assertAmount(values?.hold_amount ?? 0, 'Hold amount'),
@@ -186,6 +215,8 @@ function registerIpc(db, dataDirectory) {
       const pageSize = Math.min(50, Math.max(1, Math.floor(Number(options.pageSize) || 20)));
       const search = typeof options.search === 'string' ? options.search.trim().slice(0, 200) : '';
       const filter = ['all', 'active', 'completed', 'upcoming'].includes(options.filter) ? options.filter : 'all';
+      const category = ['allotted', 'participated'].includes(options.category) ? options.category : 'allotted';
+      const allottedCondition = "t.status IN ('Awarded', 'In progress', 'Completed')";
       const date = new Date();
       const today = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
       const conditions = [];
@@ -206,74 +237,109 @@ function registerIpc(db, dataDirectory) {
         conditions.push('t.tender_date > ?');
         parameters.push(today);
       }
-      const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+      const baseWhere = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+      const categoryCondition = category === 'allotted' ? allottedCondition : `NOT ${allottedCondition}`;
+      const where = `${baseWhere}${baseWhere ? ' AND ' : 'WHERE '}${categoryCondition}`;
       const count = db.prepare(`SELECT COUNT(*) AS total FROM tenders t ${where}`).get(...parameters).total;
+      const categoryCounts = db.prepare(`
+        SELECT
+          SUM(CASE WHEN ${allottedCondition} THEN 1 ELSE 0 END) AS allotted,
+          SUM(CASE WHEN NOT ${allottedCondition} THEN 1 ELSE 0 END) AS participated
+        FROM tenders t ${baseWhere}
+      `).get(...parameters);
       const summary = db.prepare(`
         SELECT COALESCE(SUM(bidding_amount), 0) AS total_value,
           COALESCE(SUM(total_received), 0) AS total_received,
           COALESCE(SUM(total_hold), 0) AS total_hold,
-          COALESCE(SUM(MAX(0, bidding_amount - total_received)), 0) AS total_pending
+          COALESCE(SUM(MAX(0, bidding_amount - total_received)), 0) AS total_pending,
+          COALESCE(SUM(tender_fee), 0) AS total_tender_fee,
+          COALESCE(SUM(emd_amount), 0) AS total_emd,
+          COALESCE(SUM(emd_refunded_amount), 0) AS total_emd_refunded
         FROM (
-          SELECT t.bidding_amount,
-            COALESCE((SELECT SUM(b.amount_received) FROM bills b WHERE b.tender_id = t.id), 0) AS total_received,
-            COALESCE((SELECT SUM(b.hold_amount) FROM bills b WHERE b.tender_id = t.id), 0) AS total_hold
+          SELECT t.bidding_amount, t.tender_fee, t.emd_amount, t.emd_refunded_amount,
+            COALESCE((SELECT SUM(b.amount_received) FROM bills b WHERE b.tender_id = t.id AND b.bill_type = 'Construction bill'), 0) AS total_received,
+            COALESCE((SELECT SUM(b.hold_amount) FROM bills b WHERE b.tender_id = t.id AND b.bill_type = 'Construction bill'), 0) AS total_hold
           FROM tenders t ${where}
         )
       `).get(...parameters);
       const rows = db.prepare(`
         SELECT t.id, t.tender_name, t.tender_reference, t.department, t.status,
           t.tender_date, t.submission_deadline, t.completion_date, t.bidding_amount,
+          t.tender_fee, t.emd_amount, t.emd_refunded_amount,
           (SELECT COUNT(*) FROM bills b WHERE b.tender_id = t.id) AS bill_count,
-          COALESCE((SELECT SUM(b.amount_received) FROM bills b WHERE b.tender_id = t.id), 0) AS total_received,
-          COALESCE((SELECT SUM(b.hold_amount) FROM bills b WHERE b.tender_id = t.id), 0) AS total_hold
+          COALESCE((SELECT SUM(b.amount_received) FROM bills b WHERE b.tender_id = t.id AND b.bill_type = 'Construction bill'), 0) AS total_received,
+          COALESCE((SELECT SUM(b.hold_amount) FROM bills b WHERE b.tender_id = t.id AND b.bill_type = 'Construction bill'), 0) AS total_hold
         FROM tenders t ${where}
         ORDER BY t.created_at DESC, t.id DESC
         LIMIT ? OFFSET ?
       `).all(...parameters, pageSize, (page - 1) * pageSize);
-      return { rows, total: count, summary, page, pageSize };
+      return { rows, total: count, summary, categoryCounts, page, pageSize };
     },
     'tenders:getById': (_event, id) => {
       const tender = db.prepare('SELECT * FROM tenders WHERE id = ?').get(assertText(id, 'Tender ID', 80));
       if (!tender) throw new Error('Tender not found.');
+      tender.project_names = db.prepare('SELECT project_name FROM tender_projects WHERE tender_id = ? ORDER BY id').all(id).map((project) => project.project_name);
+      tender.bank_guarantees = db.prepare('SELECT * FROM tender_bank_guarantees WHERE tender_id = ? ORDER BY id').all(id);
+      tender.project_completions = db.prepare(`
+        SELECT c.*,
+          (SELECT json_group_array(json_object('id', f.id, 'short_name', f.short_name, 'file_name', f.file_name, 'created_at', f.created_at))
+            FROM project_completion_files f WHERE f.completion_id = c.id) AS files_json
+        FROM project_completions c WHERE c.tender_id = ? ORDER BY c.project_name COLLATE NOCASE
+      `).all(id).map((completion) => ({
+        ...completion,
+        files: JSON.parse(completion.files_json || '[]'),
+      }));
       tender.files = db.prepare('SELECT id, short_name, file_name, created_at FROM tender_files WHERE tender_id = ? ORDER BY created_at').all(id);
       const totals = db.prepare(`
-        SELECT COUNT(*) AS bill_count, COALESCE(SUM(hold_amount), 0) AS total_hold,
-          COALESCE(SUM(amount_received), 0) AS total_received
+        SELECT COUNT(*) AS bill_count,
+          COALESCE(SUM(CASE WHEN bill_type = 'Construction bill' THEN hold_amount ELSE 0 END), 0) AS total_hold,
+          COALESCE(SUM(CASE WHEN bill_type = 'Construction bill' THEN amount_received ELSE 0 END), 0) AS total_received
         FROM bills WHERE tender_id = ?
       `).get(id);
       return { ...tender, ...totals, outstanding: Math.max(0, tender.bidding_amount - totals.total_received) };
     },
     'tenders:create': (_event, values) => {
       const tender = validateTender(values);
+      const { project_names: projectNames, bank_guarantees: bankGuarantees, ...tenderValues } = tender;
       const id = nextId(db, 'TND');
       try {
         fs.mkdirSync(path.join(dataDirectory, 'tenders', id, 'documents'), { recursive: true });
-        db.prepare(`
+        db.transaction(() => {
+          db.prepare(`
           INSERT INTO tenders (
             id, tender_name, tender_date, completion_date, bidding_amount, tender_reference,
-            department, work_location, work_scope, submission_deadline, emd_amount, tender_fee,
+            department, work_location, work_scope, submission_deadline, emd_amount, emd_refunded_amount, apply_gst, tender_fee,
             work_order_number, status, work_code, quoted_rate, rebate_percent, stipulated_months,
-            allotment_date, extension_date_1, extension_date_2, extension_date_3,
-            bank_guarantee_number, bank_guarantee_amount, bank_guarantee_issue_date,
-            bank_guarantee_expiry_date, bank_guarantee_extension_date_1,
-            bank_guarantee_extension_date_2, bank_guarantee_extension_date_3,
-            fdr_number, fdr_amount, fdr_bank, fdr_issue_date, fdr_maturity_date,
-            insurance_number, insurance_provider, insurance_issue_date, insurance_amount,
-            insurance_payment_release_date
+            allotment_date, extension_date_1, extension_date_2, extension_date_3
           )
           VALUES (
             @id, @tender_name, @tender_date, @completion_date, @bidding_amount, @tender_reference,
-            @department, @work_location, @work_scope, @submission_deadline, @emd_amount, @tender_fee,
+            @department, @work_location, @work_scope, @submission_deadline, @emd_amount, @emd_refunded_amount, @apply_gst, @tender_fee,
             @work_order_number, @status, @work_code, @quoted_rate, @rebate_percent, @stipulated_months,
-            @allotment_date, @extension_date_1, @extension_date_2, @extension_date_3,
-            @bank_guarantee_number, @bank_guarantee_amount, @bank_guarantee_issue_date,
-            @bank_guarantee_expiry_date, @bank_guarantee_extension_date_1,
-            @bank_guarantee_extension_date_2, @bank_guarantee_extension_date_3,
-            @fdr_number, @fdr_amount, @fdr_bank, @fdr_issue_date, @fdr_maturity_date,
-            @insurance_number, @insurance_provider, @insurance_issue_date, @insurance_amount,
-            @insurance_payment_release_date
+            @allotment_date, @extension_date_1, @extension_date_2, @extension_date_3
           )
-        `).run({ ...tender, id });
+          `).run({ ...tenderValues, id });
+          const insertProject = db.prepare('INSERT INTO tender_projects (tender_id, project_name) VALUES (?, ?)');
+          for (const projectName of projectNames) insertProject.run(id, projectName);
+          const insertGuarantee = db.prepare(`
+            INSERT INTO tender_bank_guarantees (
+              tender_id, bank_guarantee_number, bank_guarantee_amount, bank_guarantee_issue_date,
+              bank_guarantee_expiry_date, bank_guarantee_extension_date_1,
+              bank_guarantee_extension_date_2, bank_guarantee_extension_date_3,
+              bank_guarantee_released_date, security_instrument_number, security_instrument_amount,
+              security_instrument_institution, security_instrument_issue_date,
+              security_instrument_maturity_date, security_instrument_release_date
+            ) VALUES (
+              @tender_id, @bank_guarantee_number, @bank_guarantee_amount, @bank_guarantee_issue_date,
+              @bank_guarantee_expiry_date, @bank_guarantee_extension_date_1,
+              @bank_guarantee_extension_date_2, @bank_guarantee_extension_date_3,
+              @bank_guarantee_released_date, @security_instrument_number, @security_instrument_amount,
+              @security_instrument_institution, @security_instrument_issue_date,
+              @security_instrument_maturity_date, @security_instrument_release_date
+            )
+          `);
+          for (const guarantee of bankGuarantees) insertGuarantee.run({ ...guarantee, tender_id: id });
+        })();
       } catch (error) {
         fs.rmSync(path.join(dataDirectory, 'tenders', id), { recursive: true, force: true });
         if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') throw new Error('A tender with this name already exists.');
@@ -283,32 +349,46 @@ function registerIpc(db, dataDirectory) {
     },
     'tenders:update': (_event, id, values) => {
       const tender = validateTender(values);
+      const { project_names: projectNames, bank_guarantees: bankGuarantees, ...tenderValues } = tender;
       try {
-        const result = db.prepare(`
+        db.transaction(() => {
+          const result = db.prepare(`
           UPDATE tenders SET tender_name = @tender_name, tender_date = @tender_date,
             completion_date = @completion_date, bidding_amount = @bidding_amount,
             tender_reference = @tender_reference, department = @department,
             work_location = @work_location, work_scope = @work_scope,
             submission_deadline = @submission_deadline, emd_amount = @emd_amount,
-            tender_fee = @tender_fee, work_order_number = @work_order_number, status = @status,
+            emd_refunded_amount = @emd_refunded_amount, apply_gst = @apply_gst, tender_fee = @tender_fee,
+            work_order_number = @work_order_number, status = @status,
             work_code = @work_code, quoted_rate = @quoted_rate, rebate_percent = @rebate_percent,
             stipulated_months = @stipulated_months, allotment_date = @allotment_date,
             extension_date_1 = @extension_date_1, extension_date_2 = @extension_date_2,
-            extension_date_3 = @extension_date_3, bank_guarantee_number = @bank_guarantee_number,
-            bank_guarantee_amount = @bank_guarantee_amount,
-            bank_guarantee_issue_date = @bank_guarantee_issue_date,
-            bank_guarantee_expiry_date = @bank_guarantee_expiry_date,
-            bank_guarantee_extension_date_1 = @bank_guarantee_extension_date_1,
-            bank_guarantee_extension_date_2 = @bank_guarantee_extension_date_2,
-            bank_guarantee_extension_date_3 = @bank_guarantee_extension_date_3,
-            fdr_number = @fdr_number, fdr_amount = @fdr_amount, fdr_bank = @fdr_bank,
-            fdr_issue_date = @fdr_issue_date, fdr_maturity_date = @fdr_maturity_date,
-            insurance_number = @insurance_number, insurance_provider = @insurance_provider,
-            insurance_issue_date = @insurance_issue_date, insurance_amount = @insurance_amount,
-            insurance_payment_release_date = @insurance_payment_release_date,
             updated_at = CURRENT_TIMESTAMP WHERE id = @id
-        `).run({ ...tender, id: assertText(id, 'Tender ID', 80) });
-        if (!result.changes) throw new Error('Tender not found.');
+          `).run({ ...tenderValues, id: assertText(id, 'Tender ID', 80) });
+          if (!result.changes) throw new Error('Tender not found.');
+          db.prepare('DELETE FROM tender_projects WHERE tender_id = ?').run(id);
+          const insertProject = db.prepare('INSERT INTO tender_projects (tender_id, project_name) VALUES (?, ?)');
+          for (const projectName of projectNames) insertProject.run(id, projectName);
+          db.prepare('DELETE FROM tender_bank_guarantees WHERE tender_id = ?').run(id);
+          const insertGuarantee = db.prepare(`
+            INSERT INTO tender_bank_guarantees (
+              tender_id, bank_guarantee_number, bank_guarantee_amount, bank_guarantee_issue_date,
+              bank_guarantee_expiry_date, bank_guarantee_extension_date_1,
+              bank_guarantee_extension_date_2, bank_guarantee_extension_date_3,
+              bank_guarantee_released_date, security_instrument_number, security_instrument_amount,
+              security_instrument_institution, security_instrument_issue_date,
+              security_instrument_maturity_date, security_instrument_release_date
+            ) VALUES (
+              @tender_id, @bank_guarantee_number, @bank_guarantee_amount, @bank_guarantee_issue_date,
+              @bank_guarantee_expiry_date, @bank_guarantee_extension_date_1,
+              @bank_guarantee_extension_date_2, @bank_guarantee_extension_date_3,
+              @bank_guarantee_released_date, @security_instrument_number, @security_instrument_amount,
+              @security_instrument_institution, @security_instrument_issue_date,
+              @security_instrument_maturity_date, @security_instrument_release_date
+            )
+          `);
+          for (const guarantee of bankGuarantees) insertGuarantee.run({ ...guarantee, tender_id: id });
+        })();
       } catch (error) {
         if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') throw new Error('A tender with this name already exists.');
         throw error;
@@ -322,23 +402,54 @@ function registerIpc(db, dataDirectory) {
       db.prepare('DELETE FROM tenders WHERE id = ?').run(id);
       return true;
     },
+    'projects:complete': (_event, tenderId, values = {}) => {
+      const id = assertText(tenderId, 'Tender ID', 80);
+      const tender = db.prepare('SELECT id, tender_name FROM tenders WHERE id = ?').get(id);
+      if (!tender) throw new Error('Tender not found.');
+      const projectName = assertText(values.project_name, 'Tender name', 200);
+      if (projectName !== tender.tender_name) throw new Error('Tender name does not match this tender record.');
+      const securityAmount = assertAmount(values.security_amount, 'Security amount');
+      const securityRefund = assertAmount(values.security_refund, 'Security refund');
+      const balanceSecurity = assertAmount(values.balance_security, 'Balance security');
+      const remark = typeof values.remark === 'string' ? values.remark.trim().slice(0, 2000) : '';
+      const existing = db.prepare('SELECT id FROM project_completions WHERE tender_id = ? AND project_name = ?').get(id, projectName);
+      if (existing) {
+        db.prepare(`
+          UPDATE project_completions
+          SET security_amount = ?, security_refund = ?, balance_security = ?, remark = ?,
+            completed_at = CURRENT_TIMESTAMP
+          WHERE id = ?
+        `).run(securityAmount, securityRefund, balanceSecurity, remark, existing.id);
+        return { id: existing.id };
+      }
+      const completionId = `COMP-${crypto.randomUUID()}`;
+      db.prepare(`
+        INSERT INTO project_completions (
+          id, tender_id, project_name, security_amount, security_refund, balance_security, remark
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+      `).run(completionId, id, projectName, securityAmount, securityRefund, balanceSecurity, remark);
+      return { id: completionId };
+    },
     'bills:list': (_event, tenderId, options = {}) => {
       const id = assertText(tenderId, 'Tender ID', 80);
       if (!db.prepare('SELECT id FROM tenders WHERE id = ?').get(id)) throw new Error('Tender not found.');
       const page = Math.max(1, Math.floor(Number(options.page) || 1));
       const pageSize = Math.min(50, Math.max(1, Math.floor(Number(options.pageSize) || 10)));
-      const total = db.prepare('SELECT COUNT(*) AS total FROM bills WHERE tender_id = ?').get(id).total;
+      const billType = ['Construction bill', 'Maintenance bill'].includes(options.billType)
+        ? options.billType
+        : 'Construction bill';
+      const total = db.prepare('SELECT COUNT(*) AS total FROM bills WHERE tender_id = ? AND bill_type = ?').get(id, billType).total;
       const rows = db.prepare(`
         SELECT b.*,
           (SELECT COUNT(*) FROM bill_files f WHERE f.bill_id = b.id) AS file_count
-        FROM bills b WHERE b.tender_id = ?
+        FROM bills b WHERE b.tender_id = ? AND b.bill_type = ?
         ORDER BY b.bill_date DESC, b.created_at DESC
         LIMIT ? OFFSET ?
-      `).all(id, pageSize, (page - 1) * pageSize);
+      `).all(id, billType, pageSize, (page - 1) * pageSize);
       for (const bill of rows) {
         bill.files = db.prepare('SELECT id, short_name, file_name, created_at FROM bill_files WHERE bill_id = ? ORDER BY created_at').all(bill.id);
       }
-      return { rows, total, page, pageSize };
+      return { rows, total, billType, page, pageSize };
     },
     'bills:getById': (_event, billId) => {
       const bill = db.prepare('SELECT * FROM bills WHERE id = ?').get(assertText(billId, 'Bill ID', 80));
@@ -358,13 +469,14 @@ function registerIpc(db, dataDirectory) {
     'bills:create': (_event, tenderId, values) => {
       const parent = assertText(tenderId, 'Tender ID', 80);
       if (!db.prepare('SELECT id FROM tenders WHERE id = ?').get(parent)) throw new Error('Tender not found.');
-      const bill = validateBill(values);
+      const projectNames = db.prepare('SELECT project_name FROM tender_projects WHERE tender_id = ?').all(parent).map((project) => project.project_name);
+      const bill = validateBill(values, projectNames);
       const id = nextId(db, 'BILL');
       try {
         fs.mkdirSync(path.join(dataDirectory, 'tenders', parent, 'bills', id), { recursive: true });
         db.prepare(`
           INSERT INTO bills (
-            id, tender_id, bill_name, bill_date, description, hold_amount, amount_received,
+            id, tender_id, bill_name, project_name, bill_date, description, hold_amount, amount_received,
             bill_type, work_done_amount, culture_cess_percent, rebate_percent,
             escalation_type, escalation_amount, security_percent, cgst_percent, sgst_percent,
             income_tax_percent, labour_cess_percent, construction_cess_percent, tpa_amount,
@@ -372,7 +484,7 @@ function registerIpc(db, dataDirectory) {
             other_deduction_amount, received_date, cheque_number
           )
           VALUES (
-            @id, @tender_id, @bill_name, @bill_date, @description, @hold_amount, @amount_received,
+            @id, @tender_id, @bill_name, @project_name, @bill_date, @description, @hold_amount, @amount_received,
             @bill_type, @work_done_amount, @culture_cess_percent, @rebate_percent,
             @escalation_type, @escalation_amount, @security_percent, @cgst_percent, @sgst_percent,
             @income_tax_percent, @labour_cess_percent, @construction_cess_percent, @tpa_amount,
@@ -387,9 +499,13 @@ function registerIpc(db, dataDirectory) {
       return { id };
     },
     'bills:update': (_event, id, values) => {
-      const bill = validateBill(values);
+      const existingBill = db.prepare('SELECT id, tender_id, project_name FROM bills WHERE id = ?').get(assertText(id, 'Bill ID', 80));
+      if (!existingBill) throw new Error('Bill not found.');
+      const projectNames = db.prepare('SELECT project_name FROM tender_projects WHERE tender_id = ?').all(existingBill.tender_id).map((project) => project.project_name);
+      if (!projectNames.includes(existingBill.project_name)) projectNames.push(existingBill.project_name);
+      const bill = validateBill(values, projectNames);
       const result = db.prepare(`
-        UPDATE bills SET bill_name = @bill_name, bill_date = @bill_date, description = @description,
+        UPDATE bills SET bill_name = @bill_name, project_name = @project_name, bill_date = @bill_date, description = @description,
           hold_amount = @hold_amount, amount_received = @amount_received,
           bill_type = @bill_type, work_done_amount = @work_done_amount,
           culture_cess_percent = @culture_cess_percent, rebate_percent = @rebate_percent,
@@ -415,6 +531,7 @@ function registerIpc(db, dataDirectory) {
     },
     'files:selectTender': (_event, tenderId) => files.selectTenderFiles(assertText(tenderId, 'Tender ID', 80)),
     'files:selectBill': (_event, billId) => files.selectBillFiles(assertText(billId, 'Bill ID', 80)),
+    'files:selectCompletion': (_event, completionId) => files.selectCompletionFiles(assertText(completionId, 'Project completion ID', 80)),
     'files:saveSelected': (_event, ownerId, token, shortName) => files.saveSelectedFile(
       assertText(ownerId, 'Tender or bill ID', 80),
       assertText(token, 'File selection', 80),

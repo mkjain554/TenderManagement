@@ -13,7 +13,11 @@ export default function FileShortNameDialog({ ownerId, kind, onClose, onComplete
 
   useEffect(() => {
     let active = true;
-    const select = kind === 'tender' ? api.files.selectTenderFiles : api.files.selectBillFiles;
+    const select = kind === 'tender'
+      ? api.files.selectTenderFiles
+      : kind === 'bill'
+        ? api.files.selectBillFiles
+        : api.files.selectCompletionFiles;
     select(ownerId)
       .then((selectedFiles) => {
         if (!active) {
@@ -79,7 +83,11 @@ export default function FileShortNameDialog({ ownerId, kind, onClose, onComplete
     }
   }
 
-  const title = kind === 'tender' ? 'Tender document names' : 'Bill document names';
+  const title = kind === 'tender'
+    ? 'Tender document names'
+    : kind === 'bill'
+      ? 'Bill document names'
+      : 'Project completion document names';
   return (
     <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && !saving && cancel()}>
       <section className="modal-card file-short-name-dialog" role="dialog" aria-modal="true" aria-labelledby="short-name-title">

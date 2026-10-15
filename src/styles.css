@@ -87,6 +87,11 @@ h1 { margin: 0; color: #202e3c; font-size: 25px; line-height: 1.28; font-weight:
 .button-light:hover:not(:disabled) { border-color: #aebbc5; background: #f9fbfc; }
 .button-small { min-height: 29px; padding: 0 10px; font-size: 10px; }
 
+.tender-tabs { display: flex; gap: 5px; margin-bottom: 15px; padding: 4px; border: 1px solid #e7ecf1; border-radius: 7px; background: #fff; }
+.tender-tab { display: inline-flex; align-items: center; gap: 7px; min-height: 33px; padding: 0 12px; border: 0; border-radius: 5px; background: transparent; color: #74818c; font-size: 11px; font-weight: 600; }
+.tender-tab:hover { background: #f7f9fa; color: #3e5360; }
+.tender-tab.active { background: #eaf4f2; color: var(--teal-dark); }
+.tender-tab.active .count-pill { background: #d6ebe6; color: var(--teal-dark); }
 .summary-strip { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: center; gap: 14px; min-height: 102px; margin-bottom: 20px; padding: 17px 18px; border: 1px solid #e7ecf1; border-radius: 8px; background: #fff; box-shadow: 0 2px 8px #25384b05; }
 .summary-strip > div:not(.summary-divider) { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .summary-icon { display: grid; place-items: center; width: 36px; height: 36px; flex: 0 0 36px; border-radius: 8px; background: #edf5f4; color: #25847a; font-size: 15px; font-weight: 600; }
@@ -176,6 +181,17 @@ tbody tr:hover:not(:has(.table-message)):not(:has(.empty-cell)) { background: #f
 .accordion-heading strong { color: #2e414d; font-size: 15px; }
 .accordion-heading small { color: #596773; font-size: 12px; font-weight: 400; }
 .accordion-content { padding: 18px 15px 5px; }
+.guarantee-records { display: grid; gap: 14px; }
+.guarantee-record { padding: 14px; border: 1px solid #e4eaee; border-radius: 7px; background: #fbfcfd; }
+.guarantee-record-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.guarantee-record-heading h3, .guarantee-detail-record h4 { margin: 0; color: #3e4d5b; font-size: 12px; }
+.guarantee-fdr-label { padding-top: 12px; border-top: 1px solid #e8edf2; color: #3e4d5b; font-size: 11px; font-weight: 700; }
+.guarantee-add-button { margin: 12px 0 5px; }
+.guarantee-detail-record + .guarantee-detail-record { margin-top: 18px; padding-top: 16px; border-top: 1px solid #edf0f3; }
+.guarantee-detail-record h4 { margin-bottom: 12px; }
+.project-completion-panel { margin-top: 18px; }
+.completion-document-link { display: block; max-width: 160px; overflow: hidden; padding: 2px 0; border: 0; background: transparent; color: var(--teal); font-size: 10px; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
+.completion-document-link:hover { color: var(--teal-dark); text-decoration: underline; }
 .tender-form-heading { margin-bottom: 14px; }
 .tender-form-heading h3 { margin: 0; color: #3e4d5b; font-size: 11px; }
 .tender-form-heading p { margin: 4px 0 0; color: #929da7; font-size: 9px; }
@@ -183,6 +199,17 @@ tbody tr:hover:not(:has(.table-message)):not(:has(.empty-cell)) { background: #f
 .field-wide { grid-column: 1 / -1; }
 .field input, .field textarea, .field select { width: 100%; min-height: 37px; padding: 0 10px; border: 1px solid #dfe5ea; border-radius: 5px; background: #fff; color: #33414f; font-size: 11px; font-weight: 400; }
 .field textarea { min-height: 72px; padding: 9px 10px; resize: vertical; }
+.project-names-field { align-content: start; }
+.project-name-list { display: grid; gap: 8px; }
+.project-name-row { display: flex; align-items: center; gap: 8px; }
+.project-name-row input { flex: 1; min-width: 0; min-height: 37px; padding: 0 10px; border: 1px solid #dfe5ea; border-radius: 5px; background: #fff; color: #33414f; font-size: 11px; font-weight: 400; }
+.project-remove-button { width: 30px; height: 30px; flex: 0 0 30px; border: 1px solid #eadede; border-radius: 5px; background: #fff8f7; color: #a65f5d; font-size: 18px; }
+.project-add-button { justify-self: start; margin-top: 2px; }
+.gst-checkbox { display: flex; align-items: flex-start; gap: 9px; grid-column: 1 / -1; color: #52606e; cursor: pointer; }
+.gst-checkbox input { width: 16px; height: 16px; margin: 1px 0 0; accent-color: var(--teal); }
+.gst-checkbox span { display: grid; gap: 3px; }
+.gst-checkbox strong { font-size: 10px; }
+.gst-checkbox small { color: #8994a0; font-size: 9px; font-weight: 400; }
 .field input::placeholder, .field textarea::placeholder { color: #aab3bb; }
 .uppercase-input { text-transform: uppercase; }
 .field > small { margin-top: -2px; color: #929da7; font-size: 8px; font-weight: 400; line-height: 1.45; }
@@ -276,6 +303,8 @@ tbody tr:hover:not(:has(.table-message)):not(:has(.empty-cell)) { background: #f
 .financial-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 32px; border-bottom: 1px solid #edf1ef; color: #7e8b94; font-size: 9px; }
 .financial-row strong { color: #485863; font-size: 10px; font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
 .financial-row .received-value { color: #398064; }
+.bill-category-summary { margin-top: 10px; padding-top: 8px; border-top: 1px solid #e5ece9; }
+.bill-category-summary h3 { margin: 0 0 2px; color: #44545f; font-size: 10px; font-weight: 700; }
 .financial-total { display: grid; grid-template-columns: 1fr auto; gap: 5px; padding-top: 13px; color: #53616b; font-size: 9px; font-weight: 600; }
 .financial-total strong { color: #1b746b; font-size: 15px; font-weight: 700; }
 .financial-total small { grid-column: 1 / -1; color: #99a49e; font-size: 8px; font-weight: 400; }
@@ -349,19 +378,33 @@ tbody tr:hover:not(:has(.table-message)):not(:has(.empty-cell)) { background: #f
 .print-title-block { margin: 20px 0 15px; text-align: center; }
 .print-title-block h2 { margin: 0; color: #1e302f; font-size: 15pt; }
 .print-title-block p { margin: 5px 0 0; color: #65716f; font-size: 9pt; }
+.print-overview { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.4fr); gap: 10px; align-items: start; }
+.print-details-table, .print-guarantee-table, .print-bill-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.print-details-table th, .print-details-table td,
+.print-guarantee-table th, .print-guarantee-table td { padding: 5px 6px; border: 1px solid #b9c5d0; color: #23313e; font-size: 7.2pt; text-align: left; overflow-wrap: anywhere; }
+.print-details-table th { width: 38%; background: #315b96; color: #fff; font-weight: 700; }
+.print-details-table td { background: #f2f6fa; font-weight: 600; }
+.print-guarantees h3 { margin: 0 0 5px; color: #273b37; font-size: 8.5pt; }
+.print-guarantee-table th { background: #315b96; color: #fff; font-size: 6.4pt; font-weight: 700; text-align: center; }
+.print-guarantee-table tbody tr:nth-child(even) td { background: #f2f6fa; }
+.print-guarantee-table tbody td { font-size: 6.2pt; }
 .print-project-grid { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid #cad4d1; border-left: 1px solid #cad4d1; }
 .print-project-grid > div { display: grid; gap: 4px; min-height: 43px; padding: 7px 9px; border-right: 1px solid #cad4d1; border-bottom: 1px solid #cad4d1; }
 .print-project-grid span, .print-financial-grid span { color: #697572; font-size: 8pt; }
 .print-project-grid strong { color: #263431; font-size: 9pt; font-weight: 600; }
-.print-financial-grid { display: grid; grid-template-columns: repeat(4, 1fr); margin: 16px 0; border: 1px solid #bdcbc7; background: #f4f7f6; }
+.print-financial-grid { display: grid; grid-template-columns: repeat(6, 1fr); margin: 10px 0; border: 1px solid #bdcbc7; background: #f4f7f6; }
 .print-financial-grid > div { display: grid; gap: 6px; min-height: 54px; padding: 9px; border-right: 1px solid #bdcbc7; }
 .print-financial-grid > div:last-child { border-right: 0; }
 .print-financial-grid strong { color: #203d39; font-size: 10pt; font-weight: 700; }
-.print-table-heading { margin: 18px 0 8px; color: #273b37; font-size: 10pt; }
-.print-bill-table { width: 100%; border-collapse: collapse; }
-.print-bill-table th, .print-bill-table td { height: auto; padding: 7px 6px; border: 1px solid #c7d0cd; color: #28332f; font-size: 8pt; white-space: normal; }
-.print-bill-table th { background: #edf2f0; font-weight: 700; }
-.print-bill-table tfoot th { background: #f4f7f6; text-align: right; }
+.print-section-heading { display: flex; align-items: baseline; justify-content: space-between; margin: 11px 0 5px; padding-bottom: 4px; border-bottom: 1px solid #b8c7d8; }
+.print-section-heading h3 { margin: 0; color: #273b37; font-size: 9pt; }
+.print-section-heading span { color: #65716f; font-size: 7pt; }
+.print-bill-table th, .print-bill-table td { height: auto; padding: 4px 3px; border: 1px solid #bac5d0; color: #28333f; font-size: 6.3pt; text-align: right; white-space: normal; overflow-wrap: anywhere; }
+.print-bill-table th { background: #315b96; color: #fff; font-size: 6.1pt; font-weight: 700; text-align: center; }
+.print-bill-table tbody tr:nth-child(even) td { background: #f1f5fa; }
+.print-bill-table th:first-child, .print-bill-table td:first-child,
+.print-bill-table th:nth-child(2), .print-bill-table td:nth-child(2) { text-align: left; }
+.print-bill-table tfoot th { background: #e8eef6; color: #1f3041; font-size: 6pt; text-align: right; }
 .print-bill-table tfoot th:first-child { text-align: left; }
 .print-bill-table .print-no-bills { padding: 16px; color: #63706b; text-align: center; }
 .print-note { margin: 12px 0 0; color: #68736f; font-size: 8pt; font-style: italic; }
@@ -508,14 +551,15 @@ td { font-size: 11px; }
 .status-completed { color: #1d665d; }
 .row-actions .delete-action { color: #8e4545; }
 
-@page { size: A4 portrait; margin: 14mm; }
+@page { size: A4 landscape; margin: 8mm; }
 @media print {
   body { min-width: 0; min-height: 0; background: #fff; color: #111; font-family: Arial, Helvetica, sans-serif; }
   .app-root { zoom: 1; }
   body * { visibility: hidden !important; }
   .print-statement, .print-statement * { visibility: visible !important; }
   .print-statement { position: absolute; inset: 0; display: block !important; width: 100%; padding: 0; color: #17211e; background: #fff; font-size: 9pt; }
-  .print-project-grid, .print-financial-grid, .print-bill-table, .print-signatures { break-inside: avoid; }
+  .print-overview, .print-financial-grid, .print-guarantee-table, .print-bill-section, .print-signatures { break-inside: avoid; }
   .print-bill-table tr { break-inside: avoid; }
+  .print-bill-table thead { display: table-header-group; }
   .print-note { break-inside: avoid; }
 }

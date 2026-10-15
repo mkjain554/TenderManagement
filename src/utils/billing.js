@@ -8,7 +8,7 @@ function percentage(value) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 }
 
-export function calculateBill(values = {}) {
+export function calculateBill(values = {}, applyGst = true) {
   const workDone = amount(values.work_done_amount);
   const cultureCess = workDone * percentage(values.culture_cess_percent) / 100;
   const totalBeforeRebate = workDone + cultureCess;
@@ -23,11 +23,13 @@ export function calculateBill(values = {}) {
   const gross = Math.max(0, amountAfterRebate + escalationAdjustment);
   const deductions = [
     { label: 'Security', amount: gross * percentage(values.security_percent) / 100 },
-    { label: 'CGST', amount: gross * percentage(values.cgst_percent) / 100 },
-    { label: 'SGST', amount: gross * percentage(values.sgst_percent) / 100 },
+    ...(applyGst ? [
+      { label: 'CGST', amount: gross * percentage(values.cgst_percent) / 100 },
+      { label: 'SGST', amount: gross * percentage(values.sgst_percent) / 100 },
+    ] : []),
     { label: 'Income tax', amount: gross * percentage(values.income_tax_percent) / 100 },
     { label: 'Labour cess', amount: gross * percentage(values.labour_cess_percent) / 100 },
-    { label: 'Construction cess', amount: gross * percentage(values.construction_cess_percent) / 100 },
+    { label: 'Culture Cess', amount: gross * percentage(values.construction_cess_percent) / 100 },
     { label: 'TPA', amount: amount(values.tpa_amount) },
     { label: 'Withheld', amount: amount(values.withheld_amount) },
     {

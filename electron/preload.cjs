@@ -13,6 +13,9 @@ contextBridge.exposeInMainWorld('tenderDesk', {
     update: (id, tender) => invoke('tenders:update', id, tender),
     delete: (id) => invoke('tenders:delete', id),
   },
+  projects: {
+    complete: (tenderId, completion) => invoke('projects:complete', tenderId, completion),
+  },
   bills: {
     list: (tenderId, options) => invoke('bills:list', tenderId, options),
     getById: (id) => invoke('bills:getById', id),
@@ -24,6 +27,7 @@ contextBridge.exposeInMainWorld('tenderDesk', {
   files: {
     selectTenderFiles: (tenderId) => invoke('files:selectTender', tenderId),
     selectBillFiles: (billId) => invoke('files:selectBill', billId),
+    selectCompletionFiles: (completionId) => invoke('files:selectCompletion', completionId),
     saveSelectedFile: (ownerId, token, shortName) => invoke('files:saveSelected', ownerId, token, shortName),
     discardSelectedFile: (token) => invoke('files:discardSelected', token),
     remove: (fileId) => invoke('files:remove', fileId),
