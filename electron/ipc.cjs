@@ -4,6 +4,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { verifyPassword } = require('./database.cjs');
 const { createFileManager } = require('./fileManager.cjs');
+const { createBackupManager } = require('./backupRestore.cjs');
 
 function assertText(value, label, maxLength = 200) {
   if (typeof value !== 'string' || !value.trim() || value.trim().length > maxLength) {
@@ -200,8 +201,22 @@ function nextId(db, prefix) {
   })();
 }
 
-function registerIpc(db, dataDirectory) {
-  const files = createFileManager(db, dataDirectory);
+function registerIpc(db, dataDirectory, { onDatabaseReplaced, onProgress } = {}) {
+  let files = createFileManager(db, dataDirectory);
+  let maintenanceMode = false;
+  const backupManager = createBackupManager({
+    dataDirectory,
+    getDatabase: () => db,
+    replaceDatabase(nextDatabase) {
+      db = nextDatabase;
+      files = createFileManager(db, dataDirectory);
+      onDatabaseReplaced?.(db);
+    },
+    setMaintenanceMode(value) {
+      maintenanceMode = value;
+    },
+    onProgress,
+  });
   const handlers = {
     'auth:login': (_event, username, password) => {
       const name = assertText(username, 'Username', 80);
@@ -541,11 +556,16 @@ function registerIpc(db, dataDirectory) {
     'files:remove': (_event, fileId) => files.remove(assertText(fileId, 'File ID', 80)),
     'files:open': (_event, fileId) => files.open(assertText(fileId, 'File ID', 80)),
     'files:download': (_event, fileId) => files.download(assertText(fileId, 'File ID', 80)),
+    'data:backup': () => backupManager.backup(),
+    'data:restore': () => backupManager.restore(),
   };
 
   for (const [channel, handler] of Object.entries(handlers)) {
     ipcMain.handle(channel, (event, ...args) => {
       try {
+        if (maintenanceMode && channel !== 'data:backup' && channel !== 'data:restore') {
+          throw new Error('A backup or restore is in progress. Please wait until it finishes.');
+        }
         return handler(event, ...args);
       } catch (error) {
         console.error(`[${channel}]`, error);

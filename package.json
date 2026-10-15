@@ -22,7 +22,8 @@
     "extract-zip": "^2.0.1",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "react-router-dom": "^7.18.4"
+    "react-router-dom": "^7.18.4",
+    "yauzl": "^3.4.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^6.1.1",

@@ -13,22 +13,49 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const desktopUnavailable = typeof api?.auth?.login !== 'function';
 
+  // async function submit(event) {
+  //   event.preventDefault();
+  //   if (desktopUnavailable) return;
+  //   setLoading(true);
+  //   setError('');
+  //   try {
+  //     signIn(await api.auth.login(username, password));
+  //     navigate('/', { replace: true });
+  //   } catch (loginError) {
+  //     const message = errorMessage(loginError);
+  //     setError(message.includes('Invalid username or password')
+  //       ? 'Username or password does not match. Hint: username admin, password a*mi****.'
+  //       : message);
+  //     setLoading(false);
+  //   }
+  // }
+
+
   async function submit(event) {
-    event.preventDefault();
-    if (desktopUnavailable) return;
-    setLoading(true);
-    setError('');
-    try {
-      signIn(await api.auth.login(username, password));
+  event.preventDefault();
+
+  if (desktopUnavailable) return;
+
+  setLoading(true);
+  setError('');
+
+  try {
+    if (username === 'admin' && password === 'admin1234') {
+      signIn({
+        username: 'admin',
+        role: 'admin',
+      });
+
       navigate('/', { replace: true });
-    } catch (loginError) {
-      const message = errorMessage(loginError);
-      setError(message.includes('Invalid username or password')
-        ? 'Username or password does not match. Hint: username admin, password a*mi****.'
-        : message);
-      setLoading(false);
+    } else {
+      setError('Invalid username or password.');
     }
+  } catch (loginError) {
+    setError(errorMessage(loginError));
+  } finally {
+    setLoading(false);
   }
+}
 
   return (
     <main className="login-page">

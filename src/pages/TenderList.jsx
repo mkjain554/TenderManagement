@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { errorMessage, formatDate, money, useApi } from '../App.jsx';
 import ErrorNotice from '../components/ErrorNotice.jsx';
 import Pagination from '../components/Pagination.jsx';
@@ -25,6 +25,7 @@ const emptyData = {
 export default function TenderList() {
   const api = useApi();
   const navigate = useNavigate();
+  const location = useLocation();
   const [data, setData] = useState(emptyData);
   const [category, setCategory] = useState('allotted');
   const [search, setSearch] = useState('');
@@ -82,6 +83,7 @@ export default function TenderList() {
         <div><p className="eyebrow">WORKSPACE / TENDER</p><h1>Tender list</h1><p className="page-description">Track allotted work and participated tenders, including bid fees and EMD refunds.</p></div>
         <Link to="/tenders/new" className="button button-primary"><span>＋</span> Add tender</Link>
       </div>
+      <ErrorNotice variant="success">{location.state?.notice}</ErrorNotice>
       <div className="tender-tabs" role="tablist" aria-label="Tender categories">
         <button className={category === 'allotted' ? 'tender-tab active' : 'tender-tab'} role="tab" aria-selected={category === 'allotted'} onClick={() => updateCategory('allotted')}>
           Allotted <span className="count-pill">{data.categoryCounts.allotted || 0}</span>

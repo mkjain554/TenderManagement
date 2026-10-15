@@ -369,6 +369,17 @@ tbody tr:hover:not(:has(.table-message)):not(:has(.empty-cell)) { background: #f
 .settings-help { margin: 0; color: #76838e; font-size: 12px; line-height: 1.55; }
 .settings-actions { display: flex; justify-content: flex-end; margin-top: 22px; padding-top: 18px; border-top: 1px solid #edf0f3; }
 .settings-actions .button { min-height: 42px; font-size: 13px; }
+.data-management-panel { margin-top: 18px; }
+.data-settings-icon { background: #edf3fa; color: #466d9c; font-size: 23px; }
+.data-management-actions { display: grid; gap: 10px; margin: 23px 0 16px; }
+.data-action-card { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 16px; border: 1px solid #e6ebef; border-radius: 8px; background: #fbfcfd; }
+.data-action-card h3 { margin: 0; color: #30404d; font-size: 14px; }
+.data-action-card p { max-width: 560px; margin: 5px 0 0; color: #76838e; font-size: 12px; line-height: 1.5; }
+.data-action-card .button { flex: 0 0 auto; }
+.data-progress { margin-top: 18px; padding: 13px 15px; border: 1px solid #dfe9e7; border-radius: 7px; background: #f7fbfa; }
+.data-progress-heading { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 8px; color: #45565f; font-size: 12px; }
+.data-progress-heading strong { color: #24796f; font-variant-numeric: tabular-nums; }
+.data-progress progress { display: block; width: 100%; height: 8px; accent-color: var(--teal); }
 
 .print-letterhead { display: flex; align-items: center; gap: 12px; padding-bottom: 16px; border-bottom: 2px solid #254d48; }
 .print-company-mark { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 7px; background: #237f75; color: #fff; font-size: 23px; font-weight: 700; }

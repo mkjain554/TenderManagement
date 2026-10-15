@@ -38,7 +38,16 @@ function createWindow() {
 app.whenReady().then(() => {
   const dataDirectory = path.join(app.getPath('userData'), 'data');
   database = createDatabase(dataDirectory);
-  registerIpc(database, dataDirectory);
+  registerIpc(database, dataDirectory, {
+    onDatabaseReplaced(nextDatabase) {
+      database = nextDatabase;
+    },
+    onProgress(progress) {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('data:progress', progress);
+      }
+    },
+  });
   createWindow();
 
   app.on('activate', () => {

@@ -8,7 +8,7 @@ import Settings from './pages/Settings.jsx';
 import Layout from './components/Layout.jsx';
 
 const SessionContext = createContext(null);
-const DEFAULT_FONT_SCALE = 130;
+const DEFAULT_FONT_SCALE = 100;
 const MIN_FONT_SCALE = 90;
 const MAX_FONT_SCALE = 160;
 

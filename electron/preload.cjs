@@ -34,4 +34,13 @@ contextBridge.exposeInMainWorld('tenderDesk', {
     open: (fileId) => invoke('files:open', fileId),
     download: (fileId) => invoke('files:download', fileId),
   },
+  data: {
+    backup: () => invoke('data:backup'),
+    restore: () => invoke('data:restore'),
+    onProgress(callback) {
+      const listener = (_event, progress) => callback(progress);
+      ipcRenderer.on('data:progress', listener);
+      return () => ipcRenderer.removeListener('data:progress', listener);
+    },
+  },
 });
