@@ -145,6 +145,34 @@ function readArchiveEntries(zipPath) {
   });
 }
 
+function normalizeStoredFilePath(value) {
+  if (typeof value !== 'string') throw new Error('The selected database contains an invalid document reference.');
+  const normalizedPath = value.replaceAll('\\', '/');
+  const parts = normalizedPath.split('/');
+  if (parts[0] !== 'tenders' || parts.some((part) => !part || part === '.' || part === '..')) {
+    throw new Error('The selected database contains an invalid document reference.');
+  }
+  return parts.join('/');
+}
+
+function normalizeDatabaseFileReferences(databasePath) {
+  const database = new Database(databasePath, { fileMustExist: true });
+  try {
+    database.transaction(() => {
+      for (const table of ['tender_files', 'bill_files', 'project_completion_files']) {
+        const rows = database.prepare(`SELECT id, file_path FROM ${table}`).all();
+        const update = database.prepare(`UPDATE ${table} SET file_path = ? WHERE id = ?`);
+        for (const { id, file_path: filePath } of rows) {
+          const normalizedPath = normalizeStoredFilePath(filePath);
+          if (normalizedPath !== filePath) update.run(normalizedPath, id);
+        }
+      }
+    })();
+  } finally {
+    database.close();
+  }
+}
+
 function ensureReferencedFiles(databasePath, extractedDirectory) {
   const database = new Database(databasePath, { readonly: true, fileMustExist: true });
   try {
@@ -168,13 +196,8 @@ function ensureReferencedFiles(databasePath, extractedDirectory) {
       ...database.prepare('SELECT file_path FROM project_completion_files').all(),
     ];
     for (const { file_path: relativePath } of referencedFiles) {
-      if (typeof relativePath !== 'string' || relativePath.includes('\\')) {
-        throw new Error('The selected database contains an invalid document reference.');
-      }
-      const parts = relativePath.split('/');
-      if (parts[0] !== 'tenders' || parts.some((part) => !part || part === '.' || part === '..')) {
-        throw new Error('The selected database contains an unsafe document reference.');
-      }
+      const normalizedPath = normalizeStoredFilePath(relativePath);
+      const parts = normalizedPath.split('/');
       const fullPath = path.resolve(extractedDirectory, ...parts);
       if (!fullPath.startsWith(`${path.resolve(extractedDirectory, 'tenders')}${path.sep}`)) {
         throw new Error('The selected database contains an unsafe document reference.');
@@ -223,6 +246,7 @@ async function validateBackup(zipPath, extractionDirectory, onProgress) {
   if (manifest.format !== FORMAT || manifest.version !== FORMAT_VERSION) {
     throw new Error('This backup was created by an unsupported Tender Desk version.');
   }
+  normalizeDatabaseFileReferences(path.join(extractionDirectory, 'database.sqlite'));
   const stats = ensureReferencedFiles(path.join(extractionDirectory, 'database.sqlite'), extractionDirectory);
   sendProgress(onProgress, 'validation', 20, `Backup validated: ${stats.tenderCount} tenders, ${stats.billCount} bills and ${stats.fileCount} documents.`);
   return stats;

@@ -75,6 +75,9 @@ function insertFixtureData(db) {
 async function run() {
   database = createDatabase(dataDirectory);
   insertFixtureData(database);
+  for (const table of ['tender_files', 'bill_files', 'project_completion_files']) {
+    database.exec(`UPDATE ${table} SET file_path = replace(file_path, '/', char(92))`);
+  }
   const originalPasswordHash = database.prepare('SELECT password_hash FROM users WHERE username = ?').get('admin').password_hash;
 
   const manager = createBackupManager({
@@ -124,6 +127,10 @@ async function run() {
   assert.equal(database.prepare('SELECT tender_name FROM tenders WHERE id = ?').get('TND-TEST-1').tender_name, 'Tender Before Backup');
   assert.equal(database.prepare('SELECT bill_name FROM bills WHERE id = ?').get('BILL-TEST-1').bill_name, 'Construction 1');
   assert.equal(database.prepare('SELECT password_hash FROM users WHERE username = ?').get('admin').password_hash, originalPasswordHash, 'restore retains this installation sign-in');
+  for (const table of ['tender_files', 'bill_files', 'project_completion_files']) {
+    const [{ file_path: filePath }] = database.prepare(`SELECT file_path FROM ${table}`).all();
+    assert.equal(filePath.includes('\\'), false, 'Windows-style stored paths are normalized for the current platform');
+  }
   assert.equal(fs.readFileSync(path.join(dataDirectory, 'tenders/TND-TEST-1/documents/notice.pdf'), 'utf8'), 'tender document');
   assert.equal(fs.readFileSync(path.join(dataDirectory, 'tenders/TND-TEST-1/bills/BILL-TEST-1/bill.pdf'), 'utf8'), 'bill document');
   assert.equal(fs.readFileSync(path.join(dataDirectory, 'tenders/TND-TEST-1/completions/COMP-TEST-1/closeout.pdf'), 'utf8'), 'completion document');
