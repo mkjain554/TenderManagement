@@ -104,10 +104,10 @@ export default function TenderList() {
       ) : (
         <div className="summary-strip">
           <div><span className="summary-icon">▤</span><div><span className="summary-label">TENDERS SHOWN</span><strong>{data.total}</strong><small>allotted records</small></div></div>
-          <div><span className="summary-icon summary-icon-green">₹</span><div><span className="summary-label">TOTAL VALUE</span><strong>{money(data.summary.total_value)}</strong><small>across matching tenders</small></div></div>
-          <div><span className="summary-icon summary-icon-blue">✓</span><div><span className="summary-label">CONSTRUCTION RECEIVED</span><strong>{money(data.summary.total_received)}</strong><small>Construction bill payments</small></div></div>
-          <div><span className="summary-icon summary-icon-hold">⌑</span><div><span className="summary-label">CONSTRUCTION HOLD</span><strong>{money(data.summary.total_hold)}</strong><small>Construction bill holds</small></div></div>
-          <div><span className="summary-icon summary-icon-pending">◷</span><div><span className="summary-label">CONSTRUCTION PENDING</span><strong>{money(data.summary.total_pending)}</strong><small>contract value less Construction receipts</small></div></div>
+          <div><span className="summary-icon summary-icon-green">₹</span><div><span className="summary-label">TOTAL VALUE</span><strong>{money(data.summary.total_value)}</strong><small>all tenders</small></div></div>
+          <div><span className="summary-icon summary-icon-blue">✓</span><div><span className="summary-label">CONSTRUCTION RECEIVED</span><strong>{money(data.summary.total_received)}</strong><small>Construction bill</small></div></div>
+          <div><span className="summary-icon summary-icon-hold">⌑</span><div><span className="summary-label">CONSTRUCTION HOLD</span><strong>{money(data.summary.total_hold)}</strong><small> bill holds</small></div></div>
+          <div><span className="summary-icon summary-icon-pending">◷</span><div><span className="summary-label">CONSTRUCTION PENDING</span><strong>{money(data.summary.total_pending)}</strong><small>Pending amount</small></div></div>
         </div>
       )}
       <section className="panel list-panel">
