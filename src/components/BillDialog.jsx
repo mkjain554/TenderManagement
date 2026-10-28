@@ -16,6 +16,10 @@ const blankBill = (projectRebate = 0, projectNames = [], billType = 'Constructio
   rebate_percent: String(projectRebate ?? 2),
   escalation_type: 'None',
   escalation_amount: '0',
+  escalation_adjustment_type: 'None',
+  escalation_adjustment_amount: '0',
+  previous_bill_number: '',
+  previous_bill_amount: '0',
   security_percent: '5',
   cgst_percent: '1',
   sgst_percent: '1',
@@ -28,6 +32,8 @@ const blankBill = (projectRebate = 0, projectNames = [], billType = 'Constructio
   other_deduction_description: '',
   other_deduction_amount: '0',
   hold_amount: '0',
+  release_amount: '0',
+  release_against: '',
   amount_received: '0',
   received_date: '',
   cheque_number: '',
@@ -109,6 +115,7 @@ export default function BillDialog({ tenderId, bill, projectNames = [], applyGst
             <div className="form-grid">
               <label className="field"><span>Bill type</span><select name="bill_type" value={values.bill_type} onChange={update}><option>Construction bill</option><option>Maintenance bill</option></select></label>
               <label className="field"><span>Bill Number <b>*</b></span><input autoFocus name="bill_name" value={values.bill_name} onChange={update} maxLength={200} required placeholder="e.g. Running Bill 01" /></label>
+              <label className="field"><span>Previous bill number</span><input name="previous_bill_number" value={values.previous_bill_number || ''} onChange={update} maxLength={120} placeholder="Reference to the previous bill" /></label>
               <label className="field"><span>Road name <b>*</b></span><select name="project_name" value={values.project_name} onChange={update} required>{projectNames.map((projectName) => <option key={projectName}>{projectName}</option>)}{!projectNames.includes(values.project_name) && <option>{values.project_name}</option>}</select></label>
               <label className="field"><span>Bill date <b>*</b></span><input type="date" name="bill_date" value={values.bill_date} onChange={update} required /></label>
               <label className="field field-wide"><span>Description</span><textarea name="description" value={values.description} onChange={update} rows="2" maxLength={2000} placeholder="Optional notes about this bill" /></label>
@@ -120,20 +127,26 @@ export default function BillDialog({ tenderId, bill, projectNames = [], applyGst
             <h3>Bill calculation</h3>
             <p className="bill-section-help">Rates from the reference sheet are filled in as editable starting values. Confirm each rate against the contract.</p>
             <div className="form-grid">
+              <label className="field"><span>Price adjustment (+/−)</span><select name="escalation_type" value={values.escalation_type} onChange={update}><option>None</option><option>Add</option><option>Deduct</option></select></label>
+              <label className="field"><span>Price adjustment amount</span><AmountInput name="escalation_amount" value={values.escalation_amount} onChange={updateAmount} /></label>
               {percentFields.slice(0, 2).map(([name, label]) => (
                 <label className="field" key={name}><span>{label}</span><PercentInput name={name} value={values[name]} onChange={updateAmount} /></label>
               ))}
-              <label className="field"><span>Escalation adjustment</span><select name="escalation_type" value={values.escalation_type} onChange={update}><option>None</option><option>Add</option><option>Deduct</option></select></label>
-              <label className="field"><span>Escalation amount</span><AmountInput name="escalation_amount" value={values.escalation_amount} onChange={updateAmount} /></label>
+              <label className="field"><span>Escalation adjustment (+/−)</span><select name="escalation_adjustment_type" value={values.escalation_adjustment_type} onChange={update}><option>None</option><option>Add</option><option>Deduct</option></select></label>
+              <label className="field"><span>Escalation adjustment amount</span><AmountInput name="escalation_adjustment_amount" value={values.escalation_adjustment_amount} onChange={updateAmount} /></label>
+              <label className="field"><span>Previous bill amount to deduct</span><AmountInput name="previous_bill_amount" value={values.previous_bill_amount} onChange={updateAmount} /></label>
             </div>
             <div className="bill-calculation-summary">
               <BillAmount label="Total work done as per MB" value={calculation.workDone} />
+              <BillAmount label={`Price adjustment (${values.escalation_type})`} value={calculation.escalationAdjustment} />
+              <BillAmount label="Work amount after price adjustment" value={calculation.workAfterPriceAdjustment} />
               <BillAmount label={`Culture cess (${values.culture_cess_percent || 0}%)`} value={calculation.cultureCess} />
               <BillAmount label="Total before rebate" value={calculation.totalBeforeRebate} />
               <BillAmount label={`Rebate (${values.rebate_percent || 0}%)`} value={calculation.rebate} />
               <BillAmount label="Amount after rebate" value={calculation.amountAfterRebate} />
-              <BillAmount label={`Escalation (${values.escalation_type})`} value={calculation.escalationAdjustment} />
-              <BillAmount label="Gross amount after escalation" value={calculation.gross} emphasize />
+              <BillAmount label={`Escalation adjustment (${values.escalation_adjustment_type})`} value={calculation.additionalEscalationAdjustment} />
+              <BillAmount label="Previous bill amount (−)" value={calculation.previousBillAmount} />
+              <BillAmount label="Gross amount after price adjustment and previous bill deduction" value={calculation.gross} emphasize />
             </div>
           </section>
 
@@ -160,6 +173,8 @@ export default function BillDialog({ tenderId, bill, projectNames = [], applyGst
             <h3>Hold and payment received</h3>
             <div className="form-grid">
               <label className="field"><span>Amount on hold</span><AmountInput name="hold_amount" value={values.hold_amount} onChange={updateAmount} /><small>Enter the amount being tracked as held separately from the calculated deductions.</small></label>
+              <label className="field"><span>Amount release</span><AmountInput name="release_amount" value={values.release_amount} onChange={updateAmount} /></label>
+              <label className="field"><span>Release against</span><input name="release_against" value={values.release_against || ''} onChange={update} maxLength={200} /></label>
               <label className="field"><span>Amount received</span><AmountInput name="amount_received" value={values.amount_received} onChange={updateAmount} /></label>
               <label className="field"><span>Date received</span><input type="date" name="received_date" value={values.received_date || ''} onChange={update} /></label>
               <label className="field"><span>Cheque / transaction number</span><input className="uppercase-input" name="cheque_number" value={values.cheque_number} onChange={update} maxLength={120} /></label>

@@ -32,6 +32,8 @@ function createDatabase(dataDirectory) {
       submission_deadline TEXT,
       emd_amount REAL NOT NULL DEFAULT 0 CHECK (emd_amount >= 0),
       emd_refunded_amount REAL NOT NULL DEFAULT 0 CHECK (emd_refunded_amount >= 0),
+      emd_submission_date TEXT,
+      emd_refund_received_date TEXT,
       apply_gst INTEGER NOT NULL DEFAULT 0 CHECK (apply_gst IN (0, 1)),
       tender_fee REAL NOT NULL DEFAULT 0 CHECK (tender_fee >= 0),
       work_order_number TEXT NOT NULL DEFAULT '',
@@ -112,6 +114,9 @@ function createDatabase(dataDirectory) {
       project_name TEXT NOT NULL,
       security_amount REAL NOT NULL DEFAULT 0 CHECK (security_amount >= 0),
       security_refund REAL NOT NULL DEFAULT 0 CHECK (security_refund >= 0),
+      security_refund_2 REAL NOT NULL DEFAULT 0 CHECK (security_refund_2 >= 0),
+      security_refund_date_1 TEXT,
+      security_refund_date_2 TEXT,
       balance_security REAL NOT NULL DEFAULT 0 CHECK (balance_security >= 0),
       remark TEXT NOT NULL DEFAULT '',
       completed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -133,6 +138,8 @@ function createDatabase(dataDirectory) {
       bill_date TEXT NOT NULL,
       description TEXT NOT NULL DEFAULT '',
       hold_amount REAL NOT NULL DEFAULT 0 CHECK (hold_amount >= 0),
+      release_amount REAL NOT NULL DEFAULT 0 CHECK (release_amount >= 0),
+      release_against TEXT NOT NULL DEFAULT '',
       amount_received REAL NOT NULL DEFAULT 0 CHECK (amount_received >= 0),
       bill_type TEXT NOT NULL DEFAULT 'Construction bill',
       work_done_amount REAL NOT NULL DEFAULT 0 CHECK (work_done_amount >= 0),
@@ -140,6 +147,10 @@ function createDatabase(dataDirectory) {
       rebate_percent REAL NOT NULL DEFAULT 2 CHECK (rebate_percent >= 0),
       escalation_type TEXT NOT NULL DEFAULT 'None',
       escalation_amount REAL NOT NULL DEFAULT 0 CHECK (escalation_amount >= 0),
+      escalation_adjustment_type TEXT NOT NULL DEFAULT 'None',
+      escalation_adjustment_amount REAL NOT NULL DEFAULT 0 CHECK (escalation_adjustment_amount >= 0),
+      previous_bill_number TEXT NOT NULL DEFAULT '',
+      previous_bill_amount REAL NOT NULL DEFAULT 0 CHECK (previous_bill_amount >= 0),
       security_percent REAL NOT NULL DEFAULT 5 CHECK (security_percent >= 0),
       cgst_percent REAL NOT NULL DEFAULT 1 CHECK (cgst_percent >= 0),
       sgst_percent REAL NOT NULL DEFAULT 1 CHECK (sgst_percent >= 0),
@@ -173,6 +184,8 @@ function createDatabase(dataDirectory) {
     ['work_location', "TEXT NOT NULL DEFAULT ''"],
     ['work_scope', "TEXT NOT NULL DEFAULT ''"],
     ['submission_deadline', 'TEXT'],
+    ['emd_submission_date', 'TEXT'],
+    ['emd_refund_received_date', 'TEXT'],
     ['emd_amount', 'REAL NOT NULL DEFAULT 0 CHECK (emd_amount >= 0)'],
     ['emd_refunded_amount', 'REAL NOT NULL DEFAULT 0 CHECK (emd_refunded_amount >= 0)'],
     ['apply_gst', 'INTEGER NOT NULL DEFAULT 1 CHECK (apply_gst IN (0, 1))'],
@@ -216,6 +229,17 @@ function createDatabase(dataDirectory) {
   migrateTenders();
 
   db.exec('CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY, applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)');
+  const existingCompletionColumns = new Set(db.pragma('table_info(project_completions)').map((column) => column.name));
+  const completionColumns = [
+    ['security_refund_2', 'REAL NOT NULL DEFAULT 0 CHECK (security_refund_2 >= 0)'],
+    ['security_refund_date_1', 'TEXT'],
+    ['security_refund_date_2', 'TEXT'],
+  ];
+  for (const [name, definition] of completionColumns) {
+    if (!existingCompletionColumns.has(name)) {
+      db.exec(`ALTER TABLE project_completions ADD COLUMN ${name} ${definition}`);
+    }
+  }
   const guaranteeMigration = db.transaction(() => {
     const migrated = db.prepare('SELECT 1 FROM schema_migrations WHERE name = ?').get('bank-guarantee-records');
     if (migrated) return;
@@ -338,6 +362,12 @@ function createDatabase(dataDirectory) {
     ['rebate_percent', 'REAL NOT NULL DEFAULT 2 CHECK (rebate_percent >= 0)'],
     ['escalation_type', "TEXT NOT NULL DEFAULT 'None'"],
     ['escalation_amount', 'REAL NOT NULL DEFAULT 0 CHECK (escalation_amount >= 0)'],
+    ['escalation_adjustment_type', "TEXT NOT NULL DEFAULT 'None'"],
+    ['escalation_adjustment_amount', 'REAL NOT NULL DEFAULT 0 CHECK (escalation_adjustment_amount >= 0)'],
+    ['previous_bill_number', "TEXT NOT NULL DEFAULT ''"],
+    ['previous_bill_amount', 'REAL NOT NULL DEFAULT 0 CHECK (previous_bill_amount >= 0)'],
+    ['release_amount', 'REAL NOT NULL DEFAULT 0 CHECK (release_amount >= 0)'],
+    ['release_against', "TEXT NOT NULL DEFAULT ''"],
     ['security_percent', 'REAL NOT NULL DEFAULT 5 CHECK (security_percent >= 0)'],
     ['cgst_percent', 'REAL NOT NULL DEFAULT 1 CHECK (cgst_percent >= 0)'],
     ['sgst_percent', 'REAL NOT NULL DEFAULT 1 CHECK (sgst_percent >= 0)'],

@@ -110,12 +110,20 @@ export default function TenderFields({ values, onChange }) {
             <PercentInput name="rebate_percent" value={values.rebate_percent} onChange={updateAmount} />
           </label>
           <label className="field">
-            <span>EMD / bid security</span>
+            <span>EMD / bid security amount</span>
             <AmountInput name="emd_amount" value={values.emd_amount} onChange={updateAmount} />
           </label>
           <label className="field">
             <span>EMD refund received</span>
             <AmountInput name="emd_refunded_amount" value={values.emd_refunded_amount} onChange={updateAmount} />
+          </label>
+          <label className="field">
+            <span>EMD submission date</span>
+            <input type="date" name="emd_submission_date" value={values.emd_submission_date || ''} onChange={update} />
+          </label>
+          <label className="field">
+            <span>EMD refund received date</span>
+            <input type="date" name="emd_refund_received_date" value={values.emd_refund_received_date || ''} onChange={update} />
           </label>
           <label className="field">
             <span>Tender document fee</span>

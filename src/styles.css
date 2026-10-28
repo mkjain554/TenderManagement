@@ -145,6 +145,7 @@ tbody tr:hover:not(:has(.table-message)):not(:has(.empty-cell)) { background: #f
 .row-actions button:disabled { cursor: wait; opacity: .65; }
 .row-actions .delete-action { color: #ae7777; }
 .row-actions .delete-action:hover { color: #a13e3e; }
+.row-actions { gap: 6px; }
 .table-message { height: 90px; text-align: center; color: #8d99a3; }
 .empty-cell { padding: 0 !important; }
 .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 250px; padding: 25px; text-align: center; }
@@ -401,11 +402,14 @@ tbody tr:hover:not(:has(.table-message)):not(:has(.empty-cell)) { background: #f
 .print-guarantee-table th { background: #315b96; color: #fff; font-size: 6.4pt; font-weight: 700; text-align: center; }
 .print-guarantee-table tbody tr:nth-child(even) td { background: #f2f6fa; }
 .print-guarantee-table tbody td { font-size: 6.2pt; }
-.print-project-grid { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid #cad4d1; border-left: 1px solid #cad4d1; }
+.print-project-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-top: 1px solid #cad4d1; border-left: 1px solid #cad4d1; }
 .print-project-grid > div { display: grid; gap: 4px; min-height: 43px; padding: 7px 9px; border-right: 1px solid #cad4d1; border-bottom: 1px solid #cad4d1; }
 .print-project-grid span, .print-financial-grid span { color: #697572; font-size: 8pt; }
 .print-project-grid strong { color: #263431; font-size: 9pt; font-weight: 600; }
-.print-financial-grid { display: grid; grid-template-columns: repeat(6, 1fr); margin: 10px 0; border: 1px solid #bdcbc7; background: #f4f7f6; }
+.print-single-bill-details { margin: 10px 0; }
+.print-single-bill-details h3 { margin: 0 0 5px; font-size: 9pt; }
+.print-detail-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.print-financial-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); margin: 10px 0; border: 1px solid #bdcbc7; background: #f4f7f6; }
 .print-financial-grid > div { display: grid; gap: 6px; min-height: 54px; padding: 9px; border-right: 1px solid #bdcbc7; }
 .print-financial-grid > div:last-child { border-right: 0; }
 .print-financial-grid strong { color: #203d39; font-size: 10pt; font-weight: 700; }
@@ -564,15 +568,33 @@ td { font-size: 11px; }
 .status-completed { color: #1d665d; }
 .row-actions .delete-action { color: #8e4545; }
 
+.field > span, .info-item > span { color: #000; font-weight: 700; }
+h1, h2, h3, h4, th { color: #000; font-weight: 700; }
+
 @page { size: A4 landscape; margin: 8mm; }
 @media print {
   body { min-width: 0; min-height: 0; background: #fff; color: #111; font-family: Arial, Helvetica, sans-serif; }
+  .app-root, .app-shell, .workspace, .main-content, .page-wrap { display: contents !important; }
   .app-root { zoom: 1; }
+  .sidebar, .topbar, .app-footer, .page-wrap > :not(.print-statement) { display: none !important; }
   body * { visibility: hidden !important; }
   .print-statement, .print-statement * { visibility: visible !important; }
-  .print-statement { position: absolute; inset: 0; display: block !important; width: 100%; padding: 0; color: #17211e; background: #fff; font-size: 9pt; }
-  .print-overview, .print-financial-grid, .print-guarantee-table, .print-bill-section, .print-signatures { break-inside: avoid; }
+  .print-statement { position: static; inset: auto; display: block !important; width: 100%; padding: 0; color: #17211e; background: #fff; font-size: 9pt; }
+  .print-overview { display: block; break-inside: auto; page-break-inside: auto; }
+  .print-details-table { margin-bottom: 8px; }
+  .print-financial-grid, .print-guarantee-table, .print-signatures { break-inside: avoid; }
+  .print-bill-section { break-inside: auto; page-break-inside: auto; }
   .print-bill-table tr { break-inside: avoid; }
   .print-bill-table thead { display: table-header-group; }
   .print-note { break-inside: avoid; }
+  .print-statement h1, .print-statement h2, .print-statement h3,
+  .print-statement th, .print-document-label, .print-project-grid span,
+  .print-financial-grid span, .print-section-heading span,
+  .print-signatures > div, .print-details-table th {
+    color: #000 !important;
+    font-weight: 700 !important;
+  }
+  .print-details-table th, .print-guarantee-table th, .print-bill-table th {
+    background: #ededed !important;
+  }
 }

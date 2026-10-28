@@ -10,17 +10,25 @@ function percentage(value) {
 
 export function calculateBill(values = {}, applyGst = true) {
   const workDone = amount(values.work_done_amount);
-  const cultureCess = workDone * percentage(values.culture_cess_percent) / 100;
-  const totalBeforeRebate = workDone + cultureCess;
-  const rebate = totalBeforeRebate * percentage(values.rebate_percent) / 100;
-  const amountAfterRebate = totalBeforeRebate - rebate;
   const escalation = amount(values.escalation_amount);
   const escalationAdjustment = values.escalation_type === 'Add'
     ? escalation
     : values.escalation_type === 'Deduct'
       ? -escalation
       : 0;
-  const gross = Math.max(0, amountAfterRebate + escalationAdjustment);
+  const workAfterPriceAdjustment = Math.max(0, workDone + escalationAdjustment);
+  const cultureCess = workAfterPriceAdjustment * percentage(values.culture_cess_percent) / 100;
+  const totalBeforeRebate = workAfterPriceAdjustment + cultureCess;
+  const rebate = totalBeforeRebate * percentage(values.rebate_percent) / 100;
+  const amountAfterRebate = totalBeforeRebate - rebate;
+  const escalationAdjustmentAmount = amount(values.escalation_adjustment_amount);
+  const additionalEscalationAdjustment = values.escalation_adjustment_type === 'Add'
+    ? escalationAdjustmentAmount
+    : values.escalation_adjustment_type === 'Deduct'
+      ? -escalationAdjustmentAmount
+      : 0;
+  const previousBillAmount = amount(values.previous_bill_amount);
+  const gross = Math.max(0, amountAfterRebate + additionalEscalationAdjustment - previousBillAmount);
   const deductions = [
     { label: 'Security', amount: gross * percentage(values.security_percent) / 100 },
     ...(applyGst ? [
@@ -41,11 +49,14 @@ export function calculateBill(values = {}, applyGst = true) {
 
   return {
     workDone,
+    workAfterPriceAdjustment,
     cultureCess,
     totalBeforeRebate,
     rebate,
     amountAfterRebate,
     escalationAdjustment,
+    additionalEscalationAdjustment,
+    previousBillAmount,
     gross,
     deductions,
     totalDeduction,

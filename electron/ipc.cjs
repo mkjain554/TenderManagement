@@ -91,6 +91,8 @@ function validateTender(values) {
   const emdAmount = assertAmount(values?.emd_amount ?? 0, 'EMD amount');
   const emdRefundedAmount = assertAmount(values?.emd_refunded_amount ?? 0, 'EMD refund received');
   if (emdRefundedAmount > emdAmount) throw new Error('EMD refund received cannot exceed the EMD amount.');
+  const emdSubmissionDate = optionalDate(values?.emd_submission_date, 'EMD submission date');
+  const emdRefundReceivedDate = optionalDate(values?.emd_refund_received_date, 'EMD refund received date');
   if (!Array.isArray(values?.bank_guarantees) || values.bank_guarantees.length > 50) {
     throw new Error('Bank guarantee details must contain no more than 50 records.');
   }
@@ -132,6 +134,8 @@ function validateTender(values) {
     submission_deadline: submissionDeadline || null,
     emd_amount: emdAmount,
     emd_refunded_amount: emdRefundedAmount,
+    emd_submission_date: emdSubmissionDate || null,
+    emd_refund_received_date: emdRefundReceivedDate || null,
     tender_fee: assertAmount(values?.tender_fee ?? 0, 'Tender fee'),
     work_order_number: optionalText(values?.work_order_number, 'Work order number', 120),
     status,
@@ -153,9 +157,11 @@ function validateBill(values, projectNames) {
   const deductionTypes = ['', 'Penalty', 'Water charges', 'Material recovery', 'Other'];
   const billType = values?.bill_type || 'Construction bill';
   const escalationType = values?.escalation_type || 'None';
+  const escalationAdjustmentType = values?.escalation_adjustment_type || 'None';
   const deductionType = values?.other_deduction_type || '';
   if (!billTypes.includes(billType)) throw new Error('Choose a valid bill type.');
   if (!escalationTypes.includes(escalationType)) throw new Error('Choose a valid escalation adjustment.');
+  if (!escalationTypes.includes(escalationAdjustmentType)) throw new Error('Choose a valid escalation adjustment.');
   if (!deductionTypes.includes(deductionType)) throw new Error('Choose a valid other deduction type.');
   const projectName = assertText(values?.project_name, 'Project name', 200);
   if (!projectNames.includes(projectName)) throw new Error('Choose a project listed under this tender.');
@@ -165,6 +171,8 @@ function validateBill(values, projectNames) {
     bill_date: assertDate(values?.bill_date, 'Bill date'),
     description: typeof values?.description === 'string' ? values.description.trim().slice(0, 2000) : '',
     hold_amount: assertAmount(values?.hold_amount ?? 0, 'Hold amount'),
+    release_amount: assertAmount(values?.release_amount ?? 0, 'Amount released'),
+    release_against: optionalText(values?.release_against, 'Release against', 200),
     amount_received: assertAmount(values?.amount_received ?? 0, 'Amount received'),
     bill_type: billType,
     work_done_amount: assertAmount(values?.work_done_amount ?? 0, 'Work done amount'),
@@ -172,6 +180,10 @@ function validateBill(values, projectNames) {
     rebate_percent: assertPercent(values?.rebate_percent ?? 0, 'Bill rebate'),
     escalation_type: escalationType,
     escalation_amount: assertAmount(values?.escalation_amount ?? 0, 'Escalation amount'),
+    escalation_adjustment_type: escalationAdjustmentType,
+    escalation_adjustment_amount: assertAmount(values?.escalation_adjustment_amount ?? 0, 'Escalation adjustment amount'),
+    previous_bill_number: optionalText(values?.previous_bill_number, 'Previous bill number', 120),
+    previous_bill_amount: assertAmount(values?.previous_bill_amount ?? 0, 'Previous bill amount'),
     security_percent: assertPercent(values?.security_percent ?? 0, 'Security deduction'),
     cgst_percent: assertPercent(values?.cgst_percent ?? 0, 'CGST'),
     sgst_percent: assertPercent(values?.sgst_percent ?? 0, 'SGST'),
@@ -324,12 +336,14 @@ function registerIpc(db, dataDirectory, { onDatabaseReplaced, onProgress } = {})
           INSERT INTO tenders (
             id, tender_name, tender_date, completion_date, bidding_amount, tender_reference,
             department, work_location, work_scope, submission_deadline, emd_amount, emd_refunded_amount, apply_gst, tender_fee,
+            emd_submission_date, emd_refund_received_date,
             work_order_number, status, work_code, quoted_rate, rebate_percent, stipulated_months,
             allotment_date, extension_date_1, extension_date_2, extension_date_3
           )
           VALUES (
             @id, @tender_name, @tender_date, @completion_date, @bidding_amount, @tender_reference,
             @department, @work_location, @work_scope, @submission_deadline, @emd_amount, @emd_refunded_amount, @apply_gst, @tender_fee,
+            @emd_submission_date, @emd_refund_received_date,
             @work_order_number, @status, @work_code, @quoted_rate, @rebate_percent, @stipulated_months,
             @allotment_date, @extension_date_1, @extension_date_2, @extension_date_3
           )
@@ -373,7 +387,8 @@ function registerIpc(db, dataDirectory, { onDatabaseReplaced, onProgress } = {})
             tender_reference = @tender_reference, department = @department,
             work_location = @work_location, work_scope = @work_scope,
             submission_deadline = @submission_deadline, emd_amount = @emd_amount,
-            emd_refunded_amount = @emd_refunded_amount, apply_gst = @apply_gst, tender_fee = @tender_fee,
+            emd_refunded_amount = @emd_refunded_amount, emd_submission_date = @emd_submission_date,
+            emd_refund_received_date = @emd_refund_received_date, apply_gst = @apply_gst, tender_fee = @tender_fee,
             work_order_number = @work_order_number, status = @status,
             work_code = @work_code, quoted_rate = @quoted_rate, rebate_percent = @rebate_percent,
             stipulated_months = @stipulated_months, allotment_date = @allotment_date,
@@ -424,25 +439,30 @@ function registerIpc(db, dataDirectory, { onDatabaseReplaced, onProgress } = {})
       const projectName = assertText(values.project_name, 'Tender name', 200);
       if (projectName !== tender.tender_name) throw new Error('Tender name does not match this tender record.');
       const securityAmount = assertAmount(values.security_amount, 'Security amount');
-      const securityRefund = assertAmount(values.security_refund, 'Security refund');
+      const securityRefund = assertAmount(values.security_refund, 'Security refund 1');
+      const securityRefund2 = assertAmount(values.security_refund_2 ?? 0, 'Security refund 2');
+      const securityRefundDate1 = optionalDate(values.security_refund_date_1, 'Security refund date 1') || null;
+      const securityRefundDate2 = optionalDate(values.security_refund_date_2, 'Security refund date 2') || null;
       const balanceSecurity = assertAmount(values.balance_security, 'Balance security');
       const remark = typeof values.remark === 'string' ? values.remark.trim().slice(0, 2000) : '';
       const existing = db.prepare('SELECT id FROM project_completions WHERE tender_id = ? AND project_name = ?').get(id, projectName);
       if (existing) {
         db.prepare(`
           UPDATE project_completions
-          SET security_amount = ?, security_refund = ?, balance_security = ?, remark = ?,
+          SET security_amount = ?, security_refund = ?, security_refund_2 = ?,
+            security_refund_date_1 = ?, security_refund_date_2 = ?, balance_security = ?, remark = ?,
             completed_at = CURRENT_TIMESTAMP
           WHERE id = ?
-        `).run(securityAmount, securityRefund, balanceSecurity, remark, existing.id);
+        `).run(securityAmount, securityRefund, securityRefund2, securityRefundDate1, securityRefundDate2, balanceSecurity, remark, existing.id);
         return { id: existing.id };
       }
       const completionId = `COMP-${crypto.randomUUID()}`;
       db.prepare(`
         INSERT INTO project_completions (
-          id, tender_id, project_name, security_amount, security_refund, balance_security, remark
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
-      `).run(completionId, id, projectName, securityAmount, securityRefund, balanceSecurity, remark);
+          id, tender_id, project_name, security_amount, security_refund, security_refund_2,
+          security_refund_date_1, security_refund_date_2, balance_security, remark
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(completionId, id, projectName, securityAmount, securityRefund, securityRefund2, securityRefundDate1, securityRefundDate2, balanceSecurity, remark);
       return { id: completionId };
     },
     'bills:list': (_event, tenderId, options = {}) => {
@@ -491,17 +511,19 @@ function registerIpc(db, dataDirectory, { onDatabaseReplaced, onProgress } = {})
         fs.mkdirSync(path.join(dataDirectory, 'tenders', parent, 'bills', id), { recursive: true });
         db.prepare(`
           INSERT INTO bills (
-            id, tender_id, bill_name, project_name, bill_date, description, hold_amount, amount_received,
+            id, tender_id, bill_name, project_name, bill_date, description, hold_amount, release_amount, release_against, amount_received,
             bill_type, work_done_amount, culture_cess_percent, rebate_percent,
-            escalation_type, escalation_amount, security_percent, cgst_percent, sgst_percent,
+            escalation_type, escalation_amount, escalation_adjustment_type, escalation_adjustment_amount,
+            previous_bill_number, previous_bill_amount, security_percent, cgst_percent, sgst_percent,
             income_tax_percent, labour_cess_percent, construction_cess_percent, tpa_amount,
             withheld_amount, other_deduction_type, other_deduction_description,
             other_deduction_amount, received_date, cheque_number
           )
           VALUES (
-            @id, @tender_id, @bill_name, @project_name, @bill_date, @description, @hold_amount, @amount_received,
+            @id, @tender_id, @bill_name, @project_name, @bill_date, @description, @hold_amount, @release_amount, @release_against, @amount_received,
             @bill_type, @work_done_amount, @culture_cess_percent, @rebate_percent,
-            @escalation_type, @escalation_amount, @security_percent, @cgst_percent, @sgst_percent,
+            @escalation_type, @escalation_amount, @escalation_adjustment_type, @escalation_adjustment_amount,
+            @previous_bill_number, @previous_bill_amount, @security_percent, @cgst_percent, @sgst_percent,
             @income_tax_percent, @labour_cess_percent, @construction_cess_percent, @tpa_amount,
             @withheld_amount, @other_deduction_type, @other_deduction_description,
             @other_deduction_amount, @received_date, @cheque_number
@@ -521,10 +543,14 @@ function registerIpc(db, dataDirectory, { onDatabaseReplaced, onProgress } = {})
       const bill = validateBill(values, projectNames);
       const result = db.prepare(`
         UPDATE bills SET bill_name = @bill_name, project_name = @project_name, bill_date = @bill_date, description = @description,
-          hold_amount = @hold_amount, amount_received = @amount_received,
+          hold_amount = @hold_amount, release_amount = @release_amount, release_against = @release_against,
+          amount_received = @amount_received,
           bill_type = @bill_type, work_done_amount = @work_done_amount,
           culture_cess_percent = @culture_cess_percent, rebate_percent = @rebate_percent,
           escalation_type = @escalation_type, escalation_amount = @escalation_amount,
+          escalation_adjustment_type = @escalation_adjustment_type,
+          escalation_adjustment_amount = @escalation_adjustment_amount,
+          previous_bill_number = @previous_bill_number, previous_bill_amount = @previous_bill_amount,
           security_percent = @security_percent, cgst_percent = @cgst_percent, sgst_percent = @sgst_percent,
           income_tax_percent = @income_tax_percent, labour_cess_percent = @labour_cess_percent,
           construction_cess_percent = @construction_cess_percent, tpa_amount = @tpa_amount,

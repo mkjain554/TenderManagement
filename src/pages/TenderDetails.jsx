@@ -28,6 +28,7 @@ export default function TenderDetails() {
   const [notice, setNotice] = useState(location.state?.notice || '');
   const [loading, setLoading] = useState(true);
   const [printBills, setPrintBills] = useState(null);
+  const [printSingleBill, setPrintSingleBill] = useState(false);
   const [printPending, setPrintPending] = useState(false);
   const [printing, setPrinting] = useState(false);
   const [fileUpload, setFileUpload] = useState(null);
@@ -66,6 +67,7 @@ export default function TenderDetails() {
     const finishPrint = () => {
       setPrintBills(null);
       setPrintPending(false);
+      setPrintSingleBill(false);
     };
     window.addEventListener('afterprint', finishPrint);
     const frame = window.requestAnimationFrame(() => window.print());
@@ -82,6 +84,7 @@ export default function TenderDetails() {
       count: bills.length,
       netPayable: bills.reduce((total, bill) => total + calculateBill(bill, Boolean(tender?.apply_gst)).netPayable, 0),
       hold: bills.reduce((total, bill) => total + Number(bill.hold_amount || 0), 0),
+      released: bills.reduce((total, bill) => total + Number(bill.release_amount || 0), 0),
       received: bills.reduce((total, bill) => total + Number(bill.amount_received || 0), 0),
     };
   });
@@ -89,8 +92,10 @@ export default function TenderDetails() {
     const bills = printBills.filter((bill) => bill.bill_type === type);
     return {
       type,
+      count: bills.length,
       netPayable: bills.reduce((total, bill) => total + calculateBill(bill, Boolean(tender?.apply_gst)).netPayable, 0),
       hold: bills.reduce((total, bill) => total + Number(bill.hold_amount || 0), 0),
+      released: bills.reduce((total, bill) => total + Number(bill.release_amount || 0), 0),
       received: bills.reduce((total, bill) => total + Number(bill.amount_received || 0), 0),
     };
   });
@@ -182,6 +187,12 @@ export default function TenderDetails() {
     }
   }
 
+  function printBill(bill) {
+    setPrintBills([bill]);
+    setPrintSingleBill(true);
+    setPrintPending(true);
+  }
+
   if (loading && !tender) return <div className="loading-state">Loading tender…</div>;
   const tenderCompletion = (tender.project_completions || []).find((record) => record.project_name === tender.tender_name);
 
@@ -251,6 +262,8 @@ export default function TenderDetails() {
                 <div className="info-item"><span>Tender / contract amount</span><strong className="info-money">{money(tender.bidding_amount)}</strong></div>
                 <div className="info-item"><span>EMD / bid security</span><strong>{money(tender.emd_amount)}</strong></div>
                 <div className="info-item"><span>EMD refund received</span><strong>{money(tender.emd_refunded_amount)}</strong></div>
+                <div className="info-item"><span>EMD submission date</span><strong>{formatDate(tender.emd_submission_date)}</strong></div>
+                <div className="info-item"><span>EMD refund received date</span><strong>{formatDate(tender.emd_refund_received_date)}</strong></div>
                 <div className="info-item"><span>Tender document fee</span><strong>{money(tender.tender_fee)}</strong></div>
                 <div className="info-item"><span>GST</span><strong>{tender.apply_gst ? 'Applied' : 'Not applied'}</strong></div>
               </div>
@@ -306,7 +319,7 @@ export default function TenderDetails() {
                     {(bill.received_date || bill.cheque_number) && <span className="table-subtext">{bill.received_date ? formatDate(bill.received_date) : ''}{bill.received_date && bill.cheque_number ? ' · ' : ''}{bill.cheque_number ? `Chq: ${bill.cheque_number}` : ''}</span>}
                   </td>
                   <td><div className="bill-row-doc-actions"><button className="view-bill-files" onClick={() => setBillFilesDialog(bill)}>View files <span>{bill.files.length}</span></button><button className="add-file-inline" onClick={() => setFileUpload({ ownerId: bill.id, kind: 'bill' })}>+ Add</button></div></td>
-                  <td><div className="row-actions"><button onClick={() => editBill(bill)} disabled={editingBillId === bill.id}>{editingBillId === bill.id ? 'Loading…' : 'Edit'}</button><button className="delete-action" onClick={() => removeBill(bill)}>Delete</button></div></td>
+                  <td><div className="row-actions"><button onClick={() => printBill(bill)}>Print</button><button onClick={() => editBill(bill)} disabled={editingBillId === bill.id}>{editingBillId === bill.id ? 'Loading…' : 'Edit'}</button><button className="delete-action" onClick={() => removeBill(bill)}>Delete</button></div></td>
                 </tr>)}
             </tbody>
           </table>
@@ -319,13 +332,16 @@ export default function TenderDetails() {
         </div>
         <div className="table-scroll">
           <table>
-            <thead><tr><th>TENDER</th><th>STATUS</th><th>SECURITY AMOUNT</th><th>SECURITY REFUND</th><th>BALANCE SECURITY</th><th>REMARK</th><th>DOCUMENTS</th></tr></thead>
+            <thead><tr><th>TENDER</th><th>STATUS</th><th>SECURITY AMOUNT</th><th>SECURITY REFUND 1</th><th>REFUND DATE 1</th><th>SECURITY REFUND 2</th><th>REFUND DATE 2</th><th>BALANCE SECURITY</th><th>REMARK</th><th>DOCUMENTS</th></tr></thead>
             <tbody>
               <tr>
                 <td><TruncatedText text={tender.tender_name} /></td>
                 <td><span className={`status-badge ${tenderCompletion ? 'status-completed' : ''}`}>{tenderCompletion ? 'Completed' : 'Pending'}</span></td>
                 <td className="amount-cell">{tenderCompletion ? money(tenderCompletion.security_amount) : '—'}</td>
                 <td className="amount-cell">{tenderCompletion ? money(tenderCompletion.security_refund) : '—'}</td>
+                <td>{formatDate(tenderCompletion?.security_refund_date_1)}</td>
+                <td className="amount-cell">{tenderCompletion ? money(tenderCompletion.security_refund_2) : '—'}</td>
+                <td>{formatDate(tenderCompletion?.security_refund_date_2)}</td>
                 <td className="amount-cell">{tenderCompletion ? money(tenderCompletion.balance_security) : '—'}</td>
                 <td className="description-cell"><TruncatedText text={tenderCompletion?.remark || '—'} /></td>
                 <td>{tenderCompletion?.files?.length ? tenderCompletion.files.map((file) => <button className="completion-document-link" key={file.id} onClick={() => openFile(file)}><TruncatedText text={file.short_name || file.file_name} /></button>) : '—'}</td>
@@ -341,21 +357,34 @@ export default function TenderDetails() {
           <span className="print-document-label">BILLING STATUS</span>
         </header>
         <div className="print-title-block">
-          <h2>Project Billing Statement</h2>
+          <h2>{printSingleBill ? `${printBills[0]?.bill_name || 'Bill'} · Billing details` : 'Project Billing Statement'}</h2>
           <p>Construction and maintenance billing statement · Generated {formatDate(todayDate())}</p>
         </div>
         <section className="print-overview">
-          <table className="print-details-table">
-            <tbody>
-              <tr><th>Department / Client</th><td>{tender.department || '—'}</td></tr>
-              <tr><th>Project / Tender</th><td>{tender.tender_name}</td></tr>
-              <tr><th>Official Tender ID / NIT</th><td>{tender.tender_reference || '—'}</td></tr>
-              <tr><th>Work order / allotment</th><td>{tender.work_order_number || '—'}{tender.allotment_date ? ` · ${formatDate(tender.allotment_date)}` : ''}</td></tr>
-              <tr><th>Contract / sanctioned amount</th><td>{money(tender.bidding_amount)}</td></tr>
-              <tr><th>Completion date / status</th><td>{formatDate(tender.completion_date)} · {tender.status}</td></tr>
-              <tr><th>Tender fee / EMD</th><td>{money(tender.tender_fee)} / {money(tender.emd_amount)}</td></tr>
-            </tbody>
-          </table>
+          <div className="print-project-grid">
+            <div><span>Department / Client</span><strong>{tender.department || '—'}</strong></div>
+            <div><span>Project / Tender</span><strong>{tender.tender_name}</strong></div>
+            <div><span>Work location</span><strong>{tender.work_location || '—'}</strong></div>
+            <div><span>Official Tender ID / NIT</span><strong>{tender.tender_reference || '—'}</strong></div>
+            <div><span>Work code</span><strong>{tender.work_code || '—'}</strong></div>
+            <div><span>Work order number</span><strong>{tender.work_order_number || '—'}</strong></div>
+            <div><span>Notice / tender date</span><strong>{formatDate(tender.tender_date)}</strong></div>
+            <div><span>Bid submission deadline</span><strong>{formatDate(tender.submission_deadline)}</strong></div>
+            <div><span>Allotment date</span><strong>{formatDate(tender.allotment_date)}</strong></div>
+            <div><span>Completion date</span><strong>{formatDate(tender.completion_date)}</strong></div>
+            <div><span>Record status</span><strong>{tender.status}</strong></div>
+            <div><span>Stipulated time</span><strong>{tender.stipulated_months ? `${tender.stipulated_months} months` : '—'}</strong></div>
+            <div><span>Contract / sanctioned amount</span><strong>{money(tender.bidding_amount)}</strong></div>
+            <div><span>Quoted rate</span><strong>{money(tender.quoted_rate)}</strong></div>
+            <div><span>Project rebate rate</span><strong>{Number(tender.rebate_percent || 0)}%</strong></div>
+            <div><span>Tender document fee</span><strong>{money(tender.tender_fee)}</strong></div>
+            <div><span>EMD / bid security</span><strong>{money(tender.emd_amount)}</strong></div>
+            <div><span>EMD refund received</span><strong>{money(tender.emd_refunded_amount)}</strong></div>
+            <div><span>EMD submission date</span><strong>{formatDate(tender.emd_submission_date)}</strong></div>
+            <div><span>EMD refund received date</span><strong>{formatDate(tender.emd_refund_received_date)}</strong></div>
+            <div><span>GST</span><strong>{tender.apply_gst ? 'Applied' : 'Not applied'}</strong></div>
+            {tender.work_scope && <div className="print-project-scope"><span>Work description</span><strong>{tender.work_scope}</strong></div>}
+          </div>
           <div className="print-guarantees">
             <h3>Bank guarantee and FDR / Insurance register</h3>
             <table className="print-guarantee-table">
@@ -378,21 +407,48 @@ export default function TenderDetails() {
             </table>
           </div>
         </section>
+        {tenderCompletion && <section className="print-single-bill-details print-security-details">
+          <h3>Tender security closeout</h3>
+          <div className="print-project-grid print-detail-grid">
+            <div><span>Security amount</span><strong>{money(tenderCompletion.security_amount)}</strong></div>
+            <div><span>Security refund 1</span><strong>{money(tenderCompletion.security_refund)}</strong></div>
+            <div><span>Refund date 1</span><strong>{formatDate(tenderCompletion.security_refund_date_1)}</strong></div>
+            <div><span>Security refund 2</span><strong>{money(tenderCompletion.security_refund_2)}</strong></div>
+            <div><span>Refund date 2</span><strong>{formatDate(tenderCompletion.security_refund_date_2)}</strong></div>
+            <div><span>Balance security</span><strong>{money(tenderCompletion.balance_security)}</strong></div>
+            <div className="print-project-scope"><span>Closeout remark</span><strong>{tenderCompletion.remark || '—'}</strong></div>
+          </div>
+        </section>}
+        {printSingleBill && <section className="print-single-bill-details">
+          <h3>Bill payment details</h3>
+          <div className="print-project-grid print-detail-grid">
+            <div><span>Previous bill number</span><strong>{printBills[0].previous_bill_number || '—'}</strong></div>
+            <div><span>Escalation adjustment</span><strong>{printBills[0].escalation_adjustment_type || 'None'} · {money(calculateBill(printBills[0], Boolean(tender.apply_gst)).additionalEscalationAdjustment)}</strong></div>
+            <div><span>Previous bill amount deducted</span><strong>{money(printBills[0].previous_bill_amount)}</strong></div>
+            <div><span>Amount on hold</span><strong>{money(printBills[0].hold_amount)}</strong></div>
+            <div><span>Amount released</span><strong>{money(printBills[0].release_amount)}</strong></div>
+            <div><span>Release against</span><strong>{printBills[0].release_against || '—'}</strong></div>
+            <div><span>Amount received</span><strong>{money(printBills[0].amount_received)}</strong></div>
+            <div><span>Payment date</span><strong>{formatDate(printBills[0].received_date)}</strong></div>
+          </div>
+        </section>}
         <section className="print-financial-grid">
+          {printBillSummaries.map((summary) => <div key={`${summary.type}-count`}><span>{summary.type} count</span><strong>{summary.count}</strong></div>)}
           <div><span>Construction contract amount</span><strong>{money(tender.bidding_amount)}</strong></div>
-          <div><span>Construction received</span><strong>{money(printBillSummaries[0].received)}</strong></div>
+          {printBillSummaries.map((summary) => <div key={`${summary.type}-net`}><span>{summary.type} net payable</span><strong>{money(summary.netPayable)}</strong></div>)}
+          {printBillSummaries.map((summary) => <div key={`${summary.type}-hold`}><span>{summary.type} on hold</span><strong>{money(summary.hold)}</strong></div>)}
+          {printBillSummaries.map((summary) => <div key={`${summary.type}-released`}><span>{summary.type} released</span><strong>{money(summary.released)}</strong></div>)}
+          {printBillSummaries.map((summary) => <div key={`${summary.type}-received`}><span>{summary.type} received</span><strong>{money(summary.received)}</strong></div>)}
           <div><span>Construction balance pending</span><strong>{money(Math.max(0, tender.bidding_amount - printBillSummaries[0].received))}</strong></div>
-          <div><span>Maintenance net payable</span><strong>{money(printBillSummaries[1].netPayable)}</strong></div>
-          <div><span>Maintenance received</span><strong>{money(printBillSummaries[1].received)}</strong></div>
           <div><span>Maintenance balance pending</span><strong>{money(Math.max(0, printBillSummaries[1].netPayable - printBillSummaries[1].received))}</strong></div>
         </section>
-        {['Construction bill', 'Maintenance bill'].map((type, typeIndex) => (
+        {['Construction bill', 'Maintenance bill'].filter((type) => !printSingleBill || printBills.some((bill) => bill.bill_type === type)).map((type) => (
           <section className="print-bill-section" key={type}>
-            <div className="print-section-heading"><h3>{type} calculation details</h3><span>{printBillRows[type]?.length || 0} bills</span></div>
+              <div className="print-section-heading"><h3>{printSingleBill ? 'Bill calculation details' : `${type} calculation details`}</h3><span>{printBillRows[type]?.length || 0} bills</span></div>
             <table className="print-bill-table">
               <thead><tr>
-                <th>Bill No.</th><th>Project</th><th>Bill date</th><th>Sanctioned amount</th><th>Previous amount</th><th>Work done</th><th>Total work done</th>
-                <th>Culture Cess (+)</th><th>Rebate (−)</th><th>Escalation (+/−)</th><th>Gross work done</th><th>Security %</th><th>Security (−)</th>
+                  <th>Bill No.</th><th>Project</th><th>Bill date</th><th>Sanctioned amount</th><th>Previous work done</th><th>Work done</th><th>Price adjustment (+/−)</th><th>Culture Cess (+)</th><th>Rebate (−)</th>
+                  <th>Escalation adjustment (+/−)</th><th>Previous bill amount (−)</th><th>Gross work done</th><th>Security %</th><th>Security (−)</th>
                 {tender.apply_gst && <th>GST (−)</th>}<th>Income tax (−)</th><th>Labour cess (−)</th><th>Culture Cess (−)</th><th>TPA (−)</th><th>Withheld (−)</th><th>Other deduction (−)</th>
                 <th>Net payable</th><th>On hold</th><th>Amount received</th><th>Payment date</th>
               </tr></thead>
@@ -400,26 +456,30 @@ export default function TenderDetails() {
                 {printBillRows[type]?.length ? printBillRows[type].map(({ bill, calculation, previousWorkDone, totalWorkDone, security, gst, incomeTax, labourCess, cultureCessDeduction, tpa, withheld, otherDeduction }) => (
                   <tr key={bill.id}>
                     <td>{bill.bill_name}</td><td>{bill.project_name || '—'}</td><td>{formatDate(bill.bill_date)}</td><td>{money(tender.bidding_amount)}</td>
-                    <td>{money(previousWorkDone)}</td><td>{money(calculation.workDone)}</td><td>{money(totalWorkDone)}</td>
-                    <td>+ {money(calculation.cultureCess)}</td><td>− {money(calculation.rebate)}</td>
+                    <td>{money(previousWorkDone)}</td><td>{money(calculation.workDone)}</td>
                     <td>{calculation.escalationAdjustment > 0 ? `+ ${money(calculation.escalationAdjustment)}` : calculation.escalationAdjustment < 0 ? `− ${money(Math.abs(calculation.escalationAdjustment))}` : '—'}</td>
+                    <td>+ {money(calculation.cultureCess)}</td><td>− {money(calculation.rebate)}</td>
+                    <td>{calculation.additionalEscalationAdjustment > 0 ? `+ ${money(calculation.additionalEscalationAdjustment)}` : calculation.additionalEscalationAdjustment < 0 ? `− ${money(Math.abs(calculation.additionalEscalationAdjustment))}` : '—'}</td>
+                    <td>− {money(calculation.previousBillAmount)}</td>
                     <td>{money(calculation.gross)}</td><td>{Number(bill.security_percent || 0)}%</td><td>− {money(security)}</td>
                     {tender.apply_gst && <td>− {money(gst)}</td>}<td>− {money(incomeTax)}</td><td>− {money(labourCess)}</td><td>− {money(cultureCessDeduction)}</td>
                     <td>− {money(tpa)}</td><td>− {money(withheld)}</td><td>− {money(otherDeduction)}</td>
                     <td>{money(calculation.netPayable)}</td><td>{money(bill.hold_amount)}</td><td>{money(bill.amount_received)}</td><td>{formatDate(bill.received_date)}</td>
                   </tr>
-                )) : <tr><td colSpan={tender.apply_gst ? 24 : 23} className="print-no-bills">No {type.toLowerCase()}s recorded.</td></tr>}
+                )) : <tr><td colSpan={tender.apply_gst ? 26 : 25} className="print-no-bills">No {type.toLowerCase()}s recorded.</td></tr>}
               </tbody>
               {!!printBillRows[type]?.length && <tfoot><tr>
-                <th colSpan="5">{type} totals</th><th>{money(printBillRows[type].reduce((total, row) => total + row.calculation.workDone, 0))}</th><th />
+                <th colSpan="5">{type} totals</th><th>{money(printBillRows[type].reduce((total, row) => total + row.calculation.workDone, 0))}</th>
+                <th />
                 <th>+ {money(printBillRows[type].reduce((total, row) => total + row.calculation.cultureCess, 0))}</th>
                 <th>− {money(printBillRows[type].reduce((total, row) => total + row.calculation.rebate, 0))}</th><th />
+                <th /><th>− {money(printBillRows[type].reduce((total, row) => total + row.calculation.previousBillAmount, 0))}</th>
                 <th>{money(printBillRows[type].reduce((total, row) => total + row.calculation.gross, 0))}</th><th /><th>− {money(printBillRows[type].reduce((total, row) => total + row.security, 0))}</th>
                 {tender.apply_gst && <th>− {money(printBillRows[type].reduce((total, row) => total + row.gst, 0))}</th>}
                 <th>− {money(printBillRows[type].reduce((total, row) => total + row.incomeTax, 0))}</th><th>− {money(printBillRows[type].reduce((total, row) => total + row.labourCess, 0))}</th>
                 <th>− {money(printBillRows[type].reduce((total, row) => total + row.cultureCessDeduction, 0))}</th><th>− {money(printBillRows[type].reduce((total, row) => total + row.tpa, 0))}</th>
                 <th>− {money(printBillRows[type].reduce((total, row) => total + row.withheld, 0))}</th><th>− {money(printBillRows[type].reduce((total, row) => total + row.otherDeduction, 0))}</th>
-                <th>{money(printBillSummaries[typeIndex].netPayable)}</th><th>{money(printBillSummaries[typeIndex].hold)}</th><th>{money(printBillSummaries[typeIndex].received)}</th><th />
+                <th>{money(printBillSummaries.find((summary) => summary.type === type)?.netPayable)}</th><th>{money(printBillSummaries.find((summary) => summary.type === type)?.hold)}</th><th>{money(printBillSummaries.find((summary) => summary.type === type)?.received)}</th><th />
               </tr></tfoot>}
             </table>
           </section>
