@@ -82,6 +82,64 @@ Tender and bill identifiers are generated independently of their names. SQLite s
 - Local document open uses the operating system's default application. Missing or moved files are reported in the app.
 
 
+## Windows: recover from an uninstall integrity error
+
+The NSIS "Installer integrity check has failed" message means Windows could not verify the installer or uninstaller executable. If it appears while uninstalling Tender Desk, the installed uninstaller may be damaged. The steps below remove the app files and its matching per-user uninstall entry without deleting tender records.
+
+1. Close Tender Desk. Before troubleshooting or reinstalling, back up important records from `%AppData%\tender-desk\data` or use the app's backup feature if it still opens. **Do not remove `%AppData%\tender-desk`; it contains the SQLite database and tender and bill documents.**
+2. Open PowerShell as the Windows user who installed the app and run:
+
+```powershell
+$ErrorActionPreference = 'Stop'
+
+# Stop the app if it is still running.
+Get-Process -Name 'Tender Desk' -ErrorAction SilentlyContinue | Stop-Process -Force
+
+# Remove the per-user app install and any staged update files.
+$appFolders = @(
+  (Join-Path $env:LOCALAPPDATA 'Programs\tender-desk'),
+  (Join-Path $env:LOCALAPPDATA 'tender-desk-updated')
+)
+foreach ($folder in $appFolders) {
+  if (Test-Path -LiteralPath $folder) {
+    Remove-Item -LiteralPath $folder -Recurse -Force
+    Write-Host "Removed app folder: $folder"
+  }
+}
+
+# Remove only uninstall registry entries whose display name is Tender Desk.
+$uninstallRoot = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall'
+if (Test-Path $uninstallRoot) {
+  Get-ChildItem -LiteralPath $uninstallRoot | ForEach-Object {
+    $entry = Get-ItemProperty -LiteralPath $_.PSPath
+    if ($entry.DisplayName -match '^Tender Desk(?:\s|$)') {
+      Remove-Item -LiteralPath $_.PSPath -Recurse -Force
+      Write-Host "Removed uninstall entry: $($entry.DisplayName)"
+    }
+  }
+}
+
+# Remove app shortcuts, if present.
+$shortcuts = @(
+  (Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Tender Desk.lnk'),
+  (Join-Path $env:USERPROFILE 'Desktop\Tender Desk.lnk')
+)
+foreach ($shortcut in $shortcuts) {
+  if (Test-Path -LiteralPath $shortcut) {
+    Remove-Item -LiteralPath $shortcut -Force
+    Write-Host "Removed shortcut: $shortcut"
+  }
+}
+```
+
+The app is now removed. Tender records remain in `%AppData%\tender-desk\data`. If the NSIS error appeared while launching a newly downloaded installer rather than while uninstalling, download a fresh installer copy and verify its SHA-256 checksum with the publisher before running it.
+
+To permanently erase this app's local records too, first make and verify a separate backup, then remove `%AppData%\tender-desk` explicitly. This permanently deletes the local database and tender and bill documents.
+
+
+
+
+
 # force uniinstall the app
 tasklist | findstr /i tender
 
@@ -103,4 +161,3 @@ del "%AppData%\Microsoft\Windows\Start Menu\Programs\Tender Desk.lnk"
 
 
 del "%UserProfile%\Desktop\Tender Desk.lnk"
-
