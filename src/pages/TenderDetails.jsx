@@ -7,6 +7,7 @@ import BillDialog from '../components/BillDialog.jsx';
 import FileShortNameDialog from '../components/FileShortNameDialog.jsx';
 import BillFilesDialog from '../components/BillFilesDialog.jsx';
 import ProjectCompletionDialog from '../components/ProjectCompletionDialog.jsx';
+import TruncatedText from '../components/TruncatedText.jsx';
 import { calculateBill } from '../utils/billing.js';
 
 const PAGE_SIZE = 10;
@@ -188,7 +189,7 @@ export default function TenderDetails() {
     <div className="page-wrap">
       <div className="detail-back"><Link className="back-link" to="/">← All tenders</Link></div>
       <div className="page-heading heading-row detail-heading">
-        <div><p className="eyebrow">APP RECORD / {tender.id}</p><h1>{tender.tender_name}</h1><p className="page-description">{tender.tender_reference ? `Tender ID / NIT: ${tender.tender_reference} · ` : ''}{tender.department || 'Department not entered'} <span className="heading-dot">•</span> {tender.status}</p></div>
+        <div><p className="eyebrow">APP RECORD / {tender.id}</p><h1><TruncatedText text={tender.tender_name} /></h1><p className="page-description"><TruncatedText text={`${tender.tender_reference ? `Tender ID / NIT: ${tender.tender_reference} · ` : ''}${tender.department || 'Department not entered'} · ${tender.status}`} /></p></div>
         <div className="heading-actions"><button className="button button-light" onClick={printStatement} disabled={printing}>{printing ? 'Preparing…' : 'Print billing statement'}</button><button className="button button-light" onClick={() => setShowCompletionDialog(true)}>Complete tender</button><button className="button button-light" onClick={() => navigate(`/tenders/${id}/edit`)}>Edit tender</button><button className="button button-primary" onClick={() => setDialog({ type: 'new', billType })}><span>＋</span> Add bill</button></div>
       </div>
       <ErrorNotice onClose={() => setError('')}>{error}</ErrorNotice>
@@ -201,24 +202,24 @@ export default function TenderDetails() {
             <div className="detail-information-section">
               <h3>Notice and work details</h3>
               <div className="info-grid">
-                <div className="info-item"><span>Official Tender ID / NIT number</span><strong>{tender.tender_reference || 'Not entered'}</strong></div>
-                <div className="info-item"><span>Department / client</span><strong>{tender.department || 'Not entered'}</strong></div>
-                <div className="info-item"><span>Work location</span><strong>{tender.work_location || 'Not entered'}</strong></div>
+                <div className="info-item"><span>Official Tender ID / NIT number</span><strong><TruncatedText text={tender.tender_reference || 'Not entered'} /></strong></div>
+                <div className="info-item"><span>Department / client</span><strong><TruncatedText text={tender.department || 'Not entered'} /></strong></div>
+                <div className="info-item"><span>Work location</span><strong><TruncatedText text={tender.work_location || 'Not entered'} /></strong></div>
                 <div className="info-item"><span>Record status</span><strong><span className={`status-badge status-${tender.status.toLowerCase().replaceAll(' ', '-')}`}>{tender.status}</span></strong></div>
                 <div className="info-item"><span>Notice / tender date</span><strong>{formatDate(tender.tender_date)}</strong></div>
                 <div className="info-item"><span>Bid submission deadline</span><strong>{formatDate(tender.submission_deadline)}</strong></div>
                 <div className="info-item"><span>Planned completion date</span><strong>{formatDate(tender.completion_date)}</strong></div>
                 <div className="info-item"><span>Stipulated completion time</span><strong>{tender.stipulated_months ? `${tender.stipulated_months} months` : 'Not entered'}</strong></div>
                 <div className="info-item"><span>Date of allotment</span><strong>{formatDate(tender.allotment_date)}</strong></div>
-                <div className="info-item"><span>Work order number</span><strong>{tender.work_order_number || 'Not entered'}</strong></div>
-                <div className="info-item"><span>Work code</span><strong>{tender.work_code || 'Not entered'}</strong></div>
+                <div className="info-item"><span>Work order number</span><strong><TruncatedText text={tender.work_order_number || 'Not entered'} /></strong></div>
+                <div className="info-item"><span>Work code</span><strong><TruncatedText text={tender.work_code || 'Not entered'} /></strong></div>
                 <div className="info-item"><span>Quoted rate</span><strong>{money(tender.quoted_rate)}</strong></div>
                 <div className="info-item"><span>Project rebate rate</span><strong>{tender.rebate_percent}%</strong></div>
                 {[1, 2, 3].map((number) => tender[`extension_date_${number}`] && (
                   <div className="info-item" key={`extension-${number}`}><span>Project extension date {number}</span><strong>{formatDate(tender[`extension_date_${number}`])}</strong></div>
                 ))}
               </div>
-              {tender.work_scope && <div className="work-scope"><span>Work description</span><p>{tender.work_scope}</p></div>}
+              {tender.work_scope && <div className="work-scope"><span>Work description</span><p><TruncatedText text={tender.work_scope} /></p></div>}
             </div>
             <details className="detail-information-section detail-collapsible">
               <summary><h3>Bank guarantee and FDR / Insurance details</h3></summary>
@@ -226,7 +227,7 @@ export default function TenderDetails() {
                 <div className="guarantee-detail-record" key={guarantee.id || index}>
                   <h4>Guarantee {index + 1}</h4>
                   <div className="info-grid">
-                    <div className="info-item"><span>Bank guarantee number</span><strong>{guarantee.bank_guarantee_number || 'Not entered'}</strong></div>
+                    <div className="info-item"><span>Bank guarantee number</span><strong><TruncatedText text={guarantee.bank_guarantee_number || 'Not entered'} /></strong></div>
                     <div className="info-item"><span>Bank guarantee amount</span><strong>{money(guarantee.bank_guarantee_amount)}</strong></div>
                     <div className="info-item"><span>Date of issue</span><strong>{formatDate(guarantee.bank_guarantee_issue_date)}</strong></div>
                     <div className="info-item"><span>Date of expiry</span><strong>{formatDate(guarantee.bank_guarantee_expiry_date)}</strong></div>
@@ -234,9 +235,9 @@ export default function TenderDetails() {
                       <div className="info-item" key={`bg-extension-${number}`}><span>Guarantee extension date {number}</span><strong>{formatDate(guarantee[`bank_guarantee_extension_date_${number}`])}</strong></div>
                     ))}
                     <div className="info-item"><span>Released date</span><strong>{formatDate(guarantee.bank_guarantee_released_date)}</strong></div>
-                    <div className="info-item"><span>FDR / Insurance number</span><strong>{guarantee.security_instrument_number || 'Not entered'}</strong></div>
+                    <div className="info-item"><span>FDR / Insurance number</span><strong><TruncatedText text={guarantee.security_instrument_number || 'Not entered'} /></strong></div>
                     <div className="info-item"><span>FDR / Insurance amount</span><strong>{money(guarantee.security_instrument_amount)}</strong></div>
-                    <div className="info-item"><span>Bank / provider</span><strong>{guarantee.security_instrument_institution || 'Not entered'}</strong></div>
+                    <div className="info-item"><span>Bank / provider</span><strong><TruncatedText text={guarantee.security_instrument_institution || 'Not entered'} /></strong></div>
                     <div className="info-item"><span>Issue date</span><strong>{formatDate(guarantee.security_instrument_issue_date)}</strong></div>
                     <div className="info-item"><span>Maturity / expiry date</span><strong>{formatDate(guarantee.security_instrument_maturity_date)}</strong></div>
                     <div className="info-item"><span>FDR / Insurance release date</span><strong>{formatDate(guarantee.security_instrument_release_date)}</strong></div>
@@ -257,7 +258,7 @@ export default function TenderDetails() {
           </div>
           <div className="documents-area">
             <div className="subsection-heading"><div><h3>Tender documents</h3><span>{tender.files.length} {tender.files.length === 1 ? 'file' : 'files'}</span></div><button className="button button-small button-light" onClick={addTenderFiles}>＋ Add files</button></div>
-            {tender.files.length > 0 ? <ul className="file-list">{tender.files.map((file) => <li key={file.id}><span className="file-type">{file.short_name || 'DOC'}</span><button className="file-name" title={file.file_name} onClick={() => openFile(file)}>{file.short_name ? `${file.short_name} · ${file.file_name}` : file.file_name}</button><button className="file-open-button" onClick={() => openFile(file)}>Open</button><button className="file-remove-button" onClick={() => removeFile(file)} title="Remove file">×</button></li>)}</ul> : <p className="muted-copy">No documents added yet. Add files to keep tender paperwork together.</p>}
+            {tender.files.length > 0 ? <ul className="file-list">{tender.files.map((file) => <li key={file.id}><span className="file-type">{file.short_name || 'DOC'}</span><button className="file-name" onClick={() => openFile(file)}><TruncatedText text={file.short_name ? `${file.short_name} · ${file.file_name}` : file.file_name} /></button><button className="file-open-button" onClick={() => openFile(file)}>Open</button><button className="file-remove-button" onClick={() => removeFile(file)} title="Remove file">×</button></li>)}</ul> : <p className="muted-copy">No documents added yet. Add files to keep tender paperwork together.</p>}
           </div>
         </section>
 
@@ -296,9 +297,9 @@ export default function TenderDetails() {
               {loading ? <tr><td colSpan="9" className="table-message">Loading bills…</td></tr>
                 : billData.rows.length === 0 ? <tr><td colSpan="9"><div className="empty-state compact"><span className="empty-icon">▧</span><strong>No {billType.toLowerCase()}s recorded yet</strong><p>Add a bill to start tracking payments and supporting documents.</p><button className="button button-light button-small" onClick={() => setDialog({ type: 'new', billType })}>＋ Add first bill</button></div></td></tr>
                 : billData.rows.map((bill) => <tr key={bill.id}>
-                  <td><strong className="bill-title">{bill.bill_name}</strong><span className="table-subtext">{bill.bill_type} · {bill.id}</span></td>
-                  <td>{bill.project_name || '—'}</td>
-                  <td>{formatDate(bill.bill_date)}</td><td className="description-cell" title={bill.description}>{bill.description || '—'}</td>
+                  <td><strong className="bill-title"><TruncatedText text={bill.bill_name} /></strong><span className="table-subtext">{bill.bill_type} · {bill.id}</span></td>
+                  <td><TruncatedText text={bill.project_name || '—'} /></td>
+                  <td>{formatDate(bill.bill_date)}</td><td className="description-cell"><TruncatedText text={bill.description || '—'} /></td>
                   <td className="amount-cell">{money(calculateBill(bill, Boolean(tender.apply_gst)).netPayable)}</td>
                   <td className="amount-cell">{money(bill.hold_amount)}</td>
                   <td className="amount-cell">{money(bill.amount_received)}
@@ -321,13 +322,13 @@ export default function TenderDetails() {
             <thead><tr><th>TENDER</th><th>STATUS</th><th>SECURITY AMOUNT</th><th>SECURITY REFUND</th><th>BALANCE SECURITY</th><th>REMARK</th><th>DOCUMENTS</th></tr></thead>
             <tbody>
               <tr>
-                <td>{tender.tender_name}</td>
+                <td><TruncatedText text={tender.tender_name} /></td>
                 <td><span className={`status-badge ${tenderCompletion ? 'status-completed' : ''}`}>{tenderCompletion ? 'Completed' : 'Pending'}</span></td>
                 <td className="amount-cell">{tenderCompletion ? money(tenderCompletion.security_amount) : '—'}</td>
                 <td className="amount-cell">{tenderCompletion ? money(tenderCompletion.security_refund) : '—'}</td>
                 <td className="amount-cell">{tenderCompletion ? money(tenderCompletion.balance_security) : '—'}</td>
-                <td className="description-cell" title={tenderCompletion?.remark}>{tenderCompletion?.remark || '—'}</td>
-                <td>{tenderCompletion?.files?.length ? tenderCompletion.files.map((file) => <button className="completion-document-link" key={file.id} onClick={() => openFile(file)}>{file.short_name || file.file_name}</button>) : '—'}</td>
+                <td className="description-cell"><TruncatedText text={tenderCompletion?.remark || '—'} /></td>
+                <td>{tenderCompletion?.files?.length ? tenderCompletion.files.map((file) => <button className="completion-document-link" key={file.id} onClick={() => openFile(file)}><TruncatedText text={file.short_name || file.file_name} /></button>) : '—'}</td>
               </tr>
             </tbody>
           </table>

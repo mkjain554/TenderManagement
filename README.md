@@ -80,3 +80,27 @@ Tender and bill identifiers are generated independently of their names. SQLite s
 - Bill rows provide a file popup with each document's short name and upload date/time, plus local view and save-copy actions. Each tender details page can print a project billing-status statement with bill totals and signature lines; it is an internal record, not a tax invoice.
 - Tender names are unique without regard to letter case.
 - Local document open uses the operating system's default application. Missing or moved files are reported in the app.
+
+
+# force uniinstall the app
+tasklist | findstr /i tender
+
+taskkill /F /IM "Tender Desk.exe"
+
+rmdir /S /Q "%LocalAppData%\Programs\tender-desk"
+
+
+rmdir /S /Q "%LocalAppData%\tender-desk-updated"
+
+
+rmdir /S /Q "%AppData%\tender-desk"
+
+
+reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\c267e838-3a89-5796-a1a7-dab748ef8d35" /f
+
+
+del "%AppData%\Microsoft\Windows\Start Menu\Programs\Tender Desk.lnk"
+
+
+del "%UserProfile%\Desktop\Tender Desk.lnk"
+

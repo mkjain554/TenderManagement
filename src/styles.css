@@ -391,8 +391,10 @@ tbody tr:hover:not(:has(.table-message)):not(:has(.empty-cell)) { background: #f
 .print-title-block p { margin: 5px 0 0; color: #65716f; font-size: 9pt; }
 .print-overview { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.4fr); gap: 10px; align-items: start; }
 .print-details-table, .print-guarantee-table, .print-bill-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.print-overview > *, .print-guarantees { min-width: 0; }
+.print-guarantees { grid-column: 1 / -1; width: 100%; }
 .print-details-table th, .print-details-table td,
-.print-guarantee-table th, .print-guarantee-table td { padding: 5px 6px; border: 1px solid #b9c5d0; color: #23313e; font-size: 7.2pt; text-align: left; overflow-wrap: anywhere; }
+.print-guarantee-table th, .print-guarantee-table td { padding: 5px 6px; border: 1px solid #b9c5d0; color: #23313e; font-size: 7.2pt; text-align: left; white-space: normal; overflow-wrap: anywhere; word-break: normal; }
 .print-details-table th { width: 38%; background: #315b96; color: #fff; font-weight: 700; }
 .print-details-table td { background: #f2f6fa; font-weight: 600; }
 .print-guarantees h3 { margin: 0 0 5px; color: #273b37; font-size: 8.5pt; }
@@ -410,7 +412,7 @@ tbody tr:hover:not(:has(.table-message)):not(:has(.empty-cell)) { background: #f
 .print-section-heading { display: flex; align-items: baseline; justify-content: space-between; margin: 11px 0 5px; padding-bottom: 4px; border-bottom: 1px solid #b8c7d8; }
 .print-section-heading h3 { margin: 0; color: #273b37; font-size: 9pt; }
 .print-section-heading span { color: #65716f; font-size: 7pt; }
-.print-bill-table th, .print-bill-table td { height: auto; padding: 4px 3px; border: 1px solid #bac5d0; color: #28333f; font-size: 6.3pt; text-align: right; white-space: normal; overflow-wrap: anywhere; }
+.print-bill-table th, .print-bill-table td { height: auto; min-width: 0; padding: 4px 3px; border: 1px solid #bac5d0; color: #28333f; font-size: 6.3pt; text-align: right; white-space: normal; overflow-wrap: anywhere; word-break: normal; }
 .print-bill-table th { background: #315b96; color: #fff; font-size: 6.1pt; font-weight: 700; text-align: center; }
 .print-bill-table tbody tr:nth-child(even) td { background: #f1f5fa; }
 .print-bill-table th:first-child, .print-bill-table td:first-child,

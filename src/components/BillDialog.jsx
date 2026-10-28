@@ -108,8 +108,8 @@ export default function BillDialog({ tenderId, bill, projectNames = [], applyGst
             <h3>Bill information</h3>
             <div className="form-grid">
               <label className="field"><span>Bill type</span><select name="bill_type" value={values.bill_type} onChange={update}><option>Construction bill</option><option>Maintenance bill</option></select></label>
-              <label className="field"><span>Bill name <b>*</b></span><input autoFocus name="bill_name" value={values.bill_name} onChange={update} maxLength={200} required placeholder="e.g. Running Bill 01" /></label>
-              <label className="field"><span>Project name <b>*</b></span><select name="project_name" value={values.project_name} onChange={update} required>{projectNames.map((projectName) => <option key={projectName}>{projectName}</option>)}{!projectNames.includes(values.project_name) && <option>{values.project_name}</option>}</select></label>
+              <label className="field"><span>Bill Number <b>*</b></span><input autoFocus name="bill_name" value={values.bill_name} onChange={update} maxLength={200} required placeholder="e.g. Running Bill 01" /></label>
+              <label className="field"><span>Road name <b>*</b></span><select name="project_name" value={values.project_name} onChange={update} required>{projectNames.map((projectName) => <option key={projectName}>{projectName}</option>)}{!projectNames.includes(values.project_name) && <option>{values.project_name}</option>}</select></label>
               <label className="field"><span>Bill date <b>*</b></span><input type="date" name="bill_date" value={values.bill_date} onChange={update} required /></label>
               <label className="field field-wide"><span>Description</span><textarea name="description" value={values.description} onChange={update} rows="2" maxLength={2000} placeholder="Optional notes about this bill" /></label>
               <label className="field field-wide"><span>Total work done as per Measurement Book (MB)</span><AmountInput name="work_done_amount" value={values.work_done_amount} onChange={updateAmount} /></label>

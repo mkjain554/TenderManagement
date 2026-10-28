@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { errorMessage, formatDateTime, useApi } from '../App.jsx';
 import ErrorNotice from './ErrorNotice.jsx';
+import TruncatedText from './TruncatedText.jsx';
 
 export default function BillFilesDialog({ bill, onClose }) {
   const api = useApi();
@@ -34,7 +35,7 @@ export default function BillFilesDialog({ bill, onClose }) {
         <div className="modal-heading">
           <div>
             <p className="eyebrow">BILL DOCUMENTS</p>
-            <h2 id="bill-files-title">{bill.bill_name}</h2>
+            <h2 id="bill-files-title"><TruncatedText text={bill.bill_name} /></h2>
             <p className="page-description">{bill.id} · {bill.files.length} {bill.files.length === 1 ? 'file' : 'files'}</p>
           </div>
           <button className="icon-button" onClick={onClose} disabled={working !== null} aria-label="Close bill documents">×</button>
@@ -45,7 +46,7 @@ export default function BillFilesDialog({ bill, onClose }) {
             <span className="dialog-file-type">DOC</span>
             <div className="bill-file-detail-info">
               <strong>{file.short_name || 'No short name'}</strong>
-              <span title={file.file_name}>{file.file_name}</span>
+              <TruncatedText as="span" text={file.file_name} />
               <small>Uploaded {formatDateTime(file.created_at)}</small>
             </div>
             <div className="bill-file-detail-actions">

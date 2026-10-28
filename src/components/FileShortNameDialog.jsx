@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { errorMessage, useApi } from '../App.jsx';
 import ErrorNotice from './ErrorNotice.jsx';
+import TruncatedText from './TruncatedText.jsx';
 
 export default function FileShortNameDialog({ ownerId, kind, onClose, onComplete }) {
   const api = useApi();
@@ -106,7 +107,7 @@ export default function FileShortNameDialog({ ownerId, kind, onClose, onComplete
               <div className="short-name-file-list">
                 {files.map((file) => <label className="short-name-file-row" key={file.token}>
                   <span className="short-name-file-icon">DOC</span>
-                  <span className="short-name-file-info"><strong>{file.file_name}</strong><small>Saved under this short name</small></span>
+                  <span className="short-name-file-info"><strong><TruncatedText text={file.file_name} /></strong><small>Saved under this short name</small></span>
                   <input
                     autoFocus={files[0].token === file.token}
                     aria-label={`Short name for ${file.file_name}`}

@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { errorMessage, formatDate, money, useApi } from '../App.jsx';
 import ErrorNotice from '../components/ErrorNotice.jsx';
 import Pagination from '../components/Pagination.jsx';
+import TruncatedText from '../components/TruncatedText.jsx';
 
 const PAGE_SIZE = 20;
 const emptyData = {
@@ -128,8 +129,8 @@ export default function TenderList() {
                 : data.rows.length === 0 ? <tr><td colSpan={columnCount} className="empty-cell"><div className="empty-state"><span className="empty-icon">▤</span><strong>{search || filter !== 'all' ? 'No matching tenders' : `No ${participated ? 'participated' : 'allotted'} tenders yet`}</strong><p>{search || filter !== 'all' ? 'Try changing your search or filter.' : participated ? 'Tenders not marked Awarded, In progress or Completed appear here.' : 'Tenders marked Awarded, In progress or Completed appear here.'}</p>{noTenders && !search && filter === 'all' && <Link to="/tenders/new" className="button button-primary button-small">Add your first tender</Link>}</div></td></tr>
                 : data.rows.map((tender) => (
                   <tr key={tender.id}>
-                    <td><Link className="tender-name" to={`/tenders/${tender.id}`}>{tender.tender_name}</Link><span className="table-subtext">{tender.tender_reference ? `Tender ID: ${tender.tender_reference}` : 'Tender ID not entered'} · {tender.id}</span></td>
-                    <td className="department-cell"><span>{tender.department || '—'}</span><small>{tender.work_location || 'Location not entered'}</small></td>
+                    <td><Link className="tender-name" to={`/tenders/${tender.id}`}><TruncatedText text={tender.tender_name} /></Link><span className="table-subtext"><TruncatedText text={tender.tender_reference ? `Tender ID: ${tender.tender_reference} · ${tender.id}` : `Tender ID not entered · ${tender.id}`} /></span></td>
+                    <td className="department-cell"><span><TruncatedText text={tender.department || '—'} /></span><small><TruncatedText text={tender.work_location || 'Location not entered'} /></small></td>
                     <td><span className={`status-badge status-${tender.status.toLowerCase().replaceAll(' ', '-')}`}>{tender.status}</span></td>
                     <td>{formatDate(tender.submission_deadline)}</td>
                     <td className="amount-cell">{money(tender.bidding_amount)}</td>

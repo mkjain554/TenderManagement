@@ -42,12 +42,12 @@ export default function TenderFields({ values, onChange }) {
             <input name="tender_name" value={values.tender_name} onChange={update} placeholder="Name of the overall tender" maxLength={200} required />
           </label>
           <div className="field field-wide project-names-field">
-            <span>Project names <b>*</b></span>
+            <span>Road names <b>*</b></span>
             <div className="project-name-list">
               {(values.project_names || ['']).map((projectName, index) => (
                 <div className="project-name-row" key={index}>
                   <input
-                    aria-label={`Project name ${index + 1}`}
+                    aria-label={`Road name ${index + 1}`}
                     value={projectName}
                     onChange={(event) => onChange({
                       ...values,
@@ -60,14 +60,14 @@ export default function TenderFields({ values, onChange }) {
                   {values.project_names.length > 1 && <button type="button" className="project-remove-button" onClick={() => onChange({
                     ...values,
                     project_names: values.project_names.filter((_, projectIndex) => projectIndex !== index),
-                  })} aria-label={`Remove project name ${index + 1}`}>×</button>}
+                  })} aria-label={`Remove road name ${index + 1}`}>×</button>}
                 </div>
               ))}
             </div>
             <button type="button" className="button button-light button-small project-add-button" onClick={() => onChange({
               ...values,
               project_names: [...values.project_names, ''],
-            })}>＋ Add project</button>
+            })}>＋ Add Road</button>
           </div>
           <label className="field field-wide">
             <span>Description of project / work</span>
