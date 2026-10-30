@@ -4,11 +4,13 @@ import { calculateBill } from '../utils/billing.js';
 import AppError from './ErrorNotice.jsx';
 import AmountInput from './AmountInput.jsx';
 import PercentInput from './PercentInput.jsx';
+import { financialYearOptions } from '../utils/financialYear.js';
 
 const blankBill = (projectRebate = 0, projectNames = [], billType = 'Construction bill') => ({
   bill_name: '',
   project_name: projectNames[0] || '',
   bill_date: todayDate(),
+  financial_year: '',
   description: '',
   bill_type: billType,
   work_done_amount: '0',
@@ -34,6 +36,8 @@ const blankBill = (projectRebate = 0, projectNames = [], billType = 'Constructio
   hold_amount: '0',
   release_amount: '0',
   release_against: '',
+  release_date: '',
+  release_remark: '',
   amount_received: '0',
   received_date: '',
   cheque_number: '',
@@ -62,6 +66,7 @@ export default function BillDialog({ tenderId, bill, projectNames = [], applyGst
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const calculation = calculateBill(values, applyGst);
+  const financialYears = financialYearOptions();
 
   useEffect(() => {
     setValues(bill ? { ...blankBill(projectRebate, projectNames, defaultBillType), ...bill } : blankBill(projectRebate, projectNames, defaultBillType));
@@ -118,6 +123,7 @@ export default function BillDialog({ tenderId, bill, projectNames = [], applyGst
               <label className="field"><span>Previous bill number</span><input name="previous_bill_number" value={values.previous_bill_number || ''} onChange={update} maxLength={120} placeholder="Reference to the previous bill" /></label>
               <label className="field"><span>Road name <b>*</b></span><select name="project_name" value={values.project_name} onChange={update} required>{projectNames.map((projectName) => <option key={projectName}>{projectName}</option>)}{!projectNames.includes(values.project_name) && <option>{values.project_name}</option>}</select></label>
               <label className="field"><span>Bill date <b>*</b></span><input type="date" name="bill_date" value={values.bill_date} onChange={update} required /></label>
+              <label className="field"><span>Financial Year <b>*</b></span><select name="financial_year" value={values.financial_year || ''} onChange={update} required><option value="" disabled>Select financial year</option>{financialYears.map((year) => <option key={year} value={year}>FY {year}</option>)}{values.financial_year && !financialYears.includes(values.financial_year) && <option value={values.financial_year}>FY {values.financial_year}</option>}</select></label>
               <label className="field field-wide"><span>Description</span><textarea name="description" value={values.description} onChange={update} rows="2" maxLength={2000} placeholder="Optional notes about this bill" /></label>
               <label className="field field-wide"><span>Total work done as per Measurement Book (MB)</span><AmountInput name="work_done_amount" value={values.work_done_amount} onChange={updateAmount} /></label>
             </div>
@@ -127,24 +133,24 @@ export default function BillDialog({ tenderId, bill, projectNames = [], applyGst
             <h3>Bill calculation</h3>
             <p className="bill-section-help">Rates from the reference sheet are filled in as editable starting values. Confirm each rate against the contract.</p>
             <div className="form-grid">
-              <label className="field"><span>Price adjustment (+/−)</span><select name="escalation_type" value={values.escalation_type} onChange={update}><option>None</option><option>Add</option><option>Deduct</option></select></label>
-              <label className="field"><span>Price adjustment amount</span><AmountInput name="escalation_amount" value={values.escalation_amount} onChange={updateAmount} /></label>
+              <label className="field"><span>Escalation adjustment (+/−)</span><select name="escalation_type" value={values.escalation_type} onChange={update}><option>None</option><option>Add</option><option>Deduct</option></select></label>
+              <label className="field"><span>Escalation adjustment amount</span><AmountInput name="escalation_amount" value={values.escalation_amount} onChange={updateAmount} /></label>
               {percentFields.slice(0, 2).map(([name, label]) => (
                 <label className="field" key={name}><span>{label}</span><PercentInput name={name} value={values[name]} onChange={updateAmount} /></label>
               ))}
-              <label className="field"><span>Escalation adjustment (+/−)</span><select name="escalation_adjustment_type" value={values.escalation_adjustment_type} onChange={update}><option>None</option><option>Add</option><option>Deduct</option></select></label>
-              <label className="field"><span>Escalation adjustment amount</span><AmountInput name="escalation_adjustment_amount" value={values.escalation_adjustment_amount} onChange={updateAmount} /></label>
+              <label className="field"><span>Price adjustment (+/−)</span><select name="escalation_adjustment_type" value={values.escalation_adjustment_type} onChange={update}><option>None</option><option>Add</option><option>Deduct</option></select></label>
+              <label className="field"><span>Price adjustment amount</span><AmountInput name="escalation_adjustment_amount" value={values.escalation_adjustment_amount} onChange={updateAmount} /></label>
               <label className="field"><span>Previous bill amount to deduct</span><AmountInput name="previous_bill_amount" value={values.previous_bill_amount} onChange={updateAmount} /></label>
             </div>
             <div className="bill-calculation-summary">
               <BillAmount label="Total work done as per MB" value={calculation.workDone} />
-              <BillAmount label={`Price adjustment (${values.escalation_type})`} value={calculation.escalationAdjustment} />
-              <BillAmount label="Work amount after price adjustment" value={calculation.workAfterPriceAdjustment} />
+              <BillAmount label={`Escalation adjustment (${values.escalation_type})`} value={calculation.escalationAdjustment} />
+              <BillAmount label="Work amount after escalation adjustment" value={calculation.workAfterPriceAdjustment} />
               <BillAmount label={`Culture cess (${values.culture_cess_percent || 0}%)`} value={calculation.cultureCess} />
               <BillAmount label="Total before rebate" value={calculation.totalBeforeRebate} />
               <BillAmount label={`Rebate (${values.rebate_percent || 0}%)`} value={calculation.rebate} />
               <BillAmount label="Amount after rebate" value={calculation.amountAfterRebate} />
-              <BillAmount label={`Escalation adjustment (${values.escalation_adjustment_type})`} value={calculation.additionalEscalationAdjustment} />
+              <BillAmount label={`Price adjustment (${values.escalation_adjustment_type})`} value={calculation.additionalEscalationAdjustment} />
               <BillAmount label="Previous bill amount (−)" value={calculation.previousBillAmount} />
               <BillAmount label="Gross amount after price adjustment and previous bill deduction" value={calculation.gross} emphasize />
             </div>
@@ -175,6 +181,8 @@ export default function BillDialog({ tenderId, bill, projectNames = [], applyGst
               <label className="field"><span>Amount on hold</span><AmountInput name="hold_amount" value={values.hold_amount} onChange={updateAmount} /><small>Enter the amount being tracked as held separately from the calculated deductions.</small></label>
               <label className="field"><span>Amount release</span><AmountInput name="release_amount" value={values.release_amount} onChange={updateAmount} /></label>
               <label className="field"><span>Release against</span><input name="release_against" value={values.release_against || ''} onChange={update} maxLength={200} /></label>
+              <label className="field"><span>Release date</span><input type="date" name="release_date" value={values.release_date || ''} onChange={update} /></label>
+              <label className="field"><span>Release remark</span><input name="release_remark" value={values.release_remark || ''} onChange={update} maxLength={500} /></label>
               <label className="field"><span>Amount received</span><AmountInput name="amount_received" value={values.amount_received} onChange={updateAmount} /></label>
               <label className="field"><span>Date received</span><input type="date" name="received_date" value={values.received_date || ''} onChange={update} /></label>
               <label className="field"><span>Cheque / transaction number</span><input className="uppercase-input" name="cheque_number" value={values.cheque_number} onChange={update} maxLength={120} /></label>

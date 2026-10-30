@@ -102,6 +102,7 @@ function createDatabase(dataDirectory) {
       insurance_amount REAL NOT NULL DEFAULT 0 CHECK (insurance_amount >= 0),
       insurance_payment_release_date TEXT,
       security_instrument_number TEXT NOT NULL DEFAULT '',
+      security_instrument_type TEXT NOT NULL DEFAULT '',
       security_instrument_amount REAL NOT NULL DEFAULT 0 CHECK (security_instrument_amount >= 0),
       security_instrument_institution TEXT NOT NULL DEFAULT '',
       security_instrument_issue_date TEXT,
@@ -140,8 +141,11 @@ function createDatabase(dataDirectory) {
       hold_amount REAL NOT NULL DEFAULT 0 CHECK (hold_amount >= 0),
       release_amount REAL NOT NULL DEFAULT 0 CHECK (release_amount >= 0),
       release_against TEXT NOT NULL DEFAULT '',
+      release_date TEXT,
+      release_remark TEXT NOT NULL DEFAULT '',
       amount_received REAL NOT NULL DEFAULT 0 CHECK (amount_received >= 0),
       bill_type TEXT NOT NULL DEFAULT 'Construction bill',
+      financial_year TEXT NOT NULL DEFAULT '',
       work_done_amount REAL NOT NULL DEFAULT 0 CHECK (work_done_amount >= 0),
       culture_cess_percent REAL NOT NULL DEFAULT 1 CHECK (culture_cess_percent >= 0),
       rebate_percent REAL NOT NULL DEFAULT 2 CHECK (rebate_percent >= 0),
@@ -272,6 +276,7 @@ function createDatabase(dataDirectory) {
     ['insurance_issue_date', 'TEXT'],
     ['insurance_amount', 'REAL NOT NULL DEFAULT 0 CHECK (insurance_amount >= 0)'],
     ['insurance_payment_release_date', 'TEXT'],
+    ['security_instrument_type', "TEXT NOT NULL DEFAULT ''"],
     ['security_instrument_number', "TEXT NOT NULL DEFAULT ''"],
     ['security_instrument_amount', 'REAL NOT NULL DEFAULT 0 CHECK (security_instrument_amount >= 0)'],
     ['security_instrument_institution', "TEXT NOT NULL DEFAULT ''"],
@@ -284,6 +289,16 @@ function createDatabase(dataDirectory) {
       if (!existingGuaranteeColumns.has(name)) {
         db.exec(`ALTER TABLE tender_bank_guarantees ADD COLUMN ${name} ${definition}`);
       }
+    }
+    if (!existingGuaranteeColumns.has('security_instrument_type')) {
+      db.exec(`
+        UPDATE tender_bank_guarantees
+        SET security_instrument_type = CASE
+          WHEN fdr_number != '' THEN 'FDR'
+          WHEN insurance_number != '' THEN 'Insurance'
+          ELSE ''
+        END
+      `);
     }
     const migrated = db.prepare('SELECT 1 FROM schema_migrations WHERE name = ?').get('insurance-by-guarantee');
     if (!migrated) {
@@ -368,6 +383,9 @@ function createDatabase(dataDirectory) {
     ['previous_bill_amount', 'REAL NOT NULL DEFAULT 0 CHECK (previous_bill_amount >= 0)'],
     ['release_amount', 'REAL NOT NULL DEFAULT 0 CHECK (release_amount >= 0)'],
     ['release_against', "TEXT NOT NULL DEFAULT ''"],
+    ['release_date', 'TEXT'],
+    ['release_remark', "TEXT NOT NULL DEFAULT ''"],
+    ['financial_year', "TEXT NOT NULL DEFAULT ''"],
     ['security_percent', 'REAL NOT NULL DEFAULT 5 CHECK (security_percent >= 0)'],
     ['cgst_percent', 'REAL NOT NULL DEFAULT 1 CHECK (cgst_percent >= 0)'],
     ['sgst_percent', 'REAL NOT NULL DEFAULT 1 CHECK (sgst_percent >= 0)'],
@@ -390,6 +408,19 @@ function createDatabase(dataDirectory) {
     }
   });
   migrateBills();
+  db.transaction(() => {
+    const billsWithoutFinancialYear = db.prepare(`
+      SELECT id, bill_date FROM bills WHERE financial_year = ''
+    `).all();
+    const updateFinancialYear = db.prepare('UPDATE bills SET financial_year = ? WHERE id = ?');
+    for (const bill of billsWithoutFinancialYear) {
+      const [year, month] = bill.bill_date.split('-').map(Number);
+      if (!Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12) continue;
+      const startYear = month >= 4 ? year : year - 1;
+      const financialYear = `${startYear}-${String((startYear + 1) % 100).padStart(2, '0')}`;
+      updateFinancialYear.run(financialYear, bill.id);
+    }
+  })();
 
   const billTypeMigration = db.transaction(() => {
     const migrated = db.prepare('SELECT 1 FROM schema_migrations WHERE name = ?').get('construction-maintenance-bill-types');

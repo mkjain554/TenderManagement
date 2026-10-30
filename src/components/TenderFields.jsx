@@ -39,7 +39,7 @@ export default function TenderFields({ values, onChange }) {
           </label>
           <label className="field field-wide">
             <span>Tender name <b>*</b></span>
-            <input name="tender_name" value={values.tender_name} onChange={update} placeholder="Name of the overall tender" maxLength={200} required />
+            <input name="tender_name" value={values.tender_name} onChange={update} placeholder="Name of the overall tender" maxLength={500} required />
           </label>
           <div className="field field-wide project-names-field">
             <span>Road names <b>*</b></span>
@@ -186,6 +186,11 @@ export default function TenderFields({ values, onChange }) {
                   ))}
                   <label className="field"><span>Released date</span><input type="date" value={guarantee.bank_guarantee_released_date} onChange={(event) => updateGuarantee(index, 'bank_guarantee_released_date', event.target.value)} /></label>
                   <div className="field-wide guarantee-fdr-label">FDR / Insurance</div>
+                  <div className="field-wide guarantee-type-options">
+                    <span>Security instrument type (select one)</span>
+                    <label><input type="checkbox" checked={guarantee.security_instrument_type === 'FDR'} onChange={(event) => updateGuarantee(index, 'security_instrument_type', event.target.checked ? 'FDR' : '')} /> FDR</label>
+                    <label><input type="checkbox" checked={guarantee.security_instrument_type === 'Insurance'} onChange={(event) => updateGuarantee(index, 'security_instrument_type', event.target.checked ? 'Insurance' : '')} /> Insurance</label>
+                  </div>
                   <label className="field"><span>FDR / Insurance number</span><input className="uppercase-input" value={guarantee.security_instrument_number} onChange={(event) => updateGuarantee(index, 'security_instrument_number', event.target.value)} maxLength={120} /></label>
                   <label className="field"><span>FDR / Insurance amount</span><AmountInput name={`security_instrument_amount_${index}`} value={guarantee.security_instrument_amount} onChange={(_, value) => updateGuarantee(index, 'security_instrument_amount', value)} /></label>
                   <label className="field"><span>Bank / provider</span><input value={guarantee.security_instrument_institution} onChange={(event) => updateGuarantee(index, 'security_instrument_institution', event.target.value)} maxLength={120} placeholder="Bank or insurance provider" /></label>
@@ -208,6 +213,7 @@ export default function TenderFields({ values, onChange }) {
               bank_guarantee_extension_date_3: '',
               bank_guarantee_released_date: '',
               security_instrument_number: '',
+              security_instrument_type: '',
               security_instrument_amount: '0',
               security_instrument_institution: '',
               security_instrument_issue_date: '',
