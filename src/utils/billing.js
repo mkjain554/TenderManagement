@@ -16,10 +16,13 @@ export function calculateBill(values = {}, applyGst = true) {
     : values.escalation_type === 'Deduct'
       ? -escalation
       : 0;
-  const workAfterPriceAdjustment = Math.max(0, workDone + escalationAdjustment);
-  const cultureCess = workAfterPriceAdjustment * percentage(values.culture_cess_percent) / 100;
-  const totalBeforeRebate = workAfterPriceAdjustment + cultureCess;
-  const rebate = totalBeforeRebate * percentage(values.rebate_percent) / 100;
+  const workAfterEscalationAdjustment = Math.max(0, workDone + escalationAdjustment);
+  const cultureCess = workAfterEscalationAdjustment * percentage(values.culture_cess_percent) / 100;
+  const totalBeforeRebate = workAfterEscalationAdjustment + cultureCess;
+  const rebateBase = (values.rebate_include_escalation === 'Include'
+    ? workAfterEscalationAdjustment
+    : workDone) + cultureCess;
+  const rebate = rebateBase * percentage(values.rebate_percent) / 100;
   const amountAfterRebate = totalBeforeRebate - rebate;
   const escalationAdjustmentAmount = amount(values.escalation_adjustment_amount);
   const additionalEscalationAdjustment = values.escalation_adjustment_type === 'Add'
@@ -27,8 +30,10 @@ export function calculateBill(values = {}, applyGst = true) {
     : values.escalation_adjustment_type === 'Deduct'
       ? -escalationAdjustmentAmount
       : 0;
+  const totalAdjustments = escalationAdjustment + additionalEscalationAdjustment;
   const previousBillAmount = amount(values.previous_bill_amount);
-  const gross = Math.max(0, amountAfterRebate + additionalEscalationAdjustment - previousBillAmount);
+  const totalAfterPriceAdjustment = amountAfterRebate + additionalEscalationAdjustment;
+  const gross = Math.max(0, totalAfterPriceAdjustment - previousBillAmount);
   const deductions = [
     { label: 'Security', amount: gross * percentage(values.security_percent) / 100 },
     ...(applyGst ? [
@@ -49,13 +54,17 @@ export function calculateBill(values = {}, applyGst = true) {
 
   return {
     workDone,
-    workAfterPriceAdjustment,
+    workAfterEscalationAdjustment,
+    workAfterPriceAdjustment: workAfterEscalationAdjustment,
     cultureCess,
     totalBeforeRebate,
+    rebateBase,
     rebate,
     amountAfterRebate,
     escalationAdjustment,
     additionalEscalationAdjustment,
+    totalAdjustments,
+    totalAfterPriceAdjustment,
     previousBillAmount,
     gross,
     deductions,

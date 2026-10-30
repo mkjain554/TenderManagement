@@ -443,7 +443,7 @@ export default function TenderDetails() {
           <h3>Bill payment details</h3>
           <div className="print-project-grid print-detail-grid">
             <div><span>Previous bill number</span><strong>{printBills[0].previous_bill_number || '—'}</strong></div>
-            <div><span>Price adjustment</span><strong>{printBills[0].escalation_adjustment_type || 'None'} · {money(calculateBill(printBills[0], Boolean(tender.apply_gst)).additionalEscalationAdjustment)}</strong></div>
+            <div><span>Adjustments</span><strong>{money(calculateBill(printBills[0], Boolean(tender.apply_gst)).totalAdjustments)}</strong></div>
             <div><span>Previous bill amount deducted</span><strong>{money(printBills[0].previous_bill_amount)}</strong></div>
             <div><span>Amount on hold</span><strong>{money(printBills[0].hold_amount)}</strong></div>
             <div><span>Amount released</span><strong>{money(printBills[0].release_amount)}</strong></div>
@@ -469,8 +469,8 @@ export default function TenderDetails() {
               <div className="print-section-heading"><h3>{printSingleBill ? 'Bill calculation details' : `${type} calculation details`}</h3><span>{printBillRows[type]?.length || 0} bills</span></div>
             <table className="print-bill-table">
               <thead><tr>
-                  <th>Bill No.</th><th>Project</th><th>Bill date</th><th>Financial year</th><th>Sanctioned amount</th><th>Previous work done</th><th>Work done</th><th>Escalation adjustment (+/−)</th><th>Culture Cess (+)</th><th>Rebate (−)</th>
-                  <th>Price adjustment (+/−)</th><th>Previous bill amount (−)</th><th>Gross work done</th><th>Security %</th><th>Security (−)</th>
+                  <th>Bill No.</th><th>Project</th><th>Bill date</th><th>Financial year</th><th>Sanctioned amount</th><th>Previous work done</th><th>Work done</th><th>Adjustments (+/−)</th><th>Culture Cess (+)</th><th>Rebate (−)</th>
+                  <th>Previous bill amount (−)</th><th>Gross amount</th><th>Security %</th><th>Security (−)</th>
                 {tender.apply_gst && <th>GST (−)</th>}<th>Income tax (−)</th><th>Labour cess (−)</th><th>Culture Cess (−)</th><th>TPA (−)</th><th>Withheld (−)</th><th>Other deduction (−)</th>
                 <th>Net payable</th><th>On hold</th><th>Amount received</th><th>Payment date</th><th>Release date</th><th>Release against</th><th>Release remark</th>
               </tr></thead>
@@ -479,9 +479,8 @@ export default function TenderDetails() {
                   <tr key={bill.id}>
                     <td>{bill.bill_name}</td><td>{bill.project_name || '—'}</td><td>{formatDate(bill.bill_date)}</td><td>{bill.financial_year || '—'}</td><td>{money(tender.bidding_amount)}</td>
                     <td>{money(previousWorkDone)}</td><td>{money(calculation.workDone)}</td>
-                    <td>{calculation.escalationAdjustment > 0 ? `+ ${money(calculation.escalationAdjustment)}` : calculation.escalationAdjustment < 0 ? `− ${money(Math.abs(calculation.escalationAdjustment))}` : '—'}</td>
+                    <td>{calculation.totalAdjustments > 0 ? `+ ${money(calculation.totalAdjustments)}` : calculation.totalAdjustments < 0 ? `− ${money(Math.abs(calculation.totalAdjustments))}` : '—'}</td>
                     <td>+ {money(calculation.cultureCess)}</td><td>− {money(calculation.rebate)}</td>
-                    <td>{calculation.additionalEscalationAdjustment > 0 ? `+ ${money(calculation.additionalEscalationAdjustment)}` : calculation.additionalEscalationAdjustment < 0 ? `− ${money(Math.abs(calculation.additionalEscalationAdjustment))}` : '—'}</td>
                     <td>− {money(calculation.previousBillAmount)}</td>
                     <td>{money(calculation.gross)}</td><td>{Number(bill.security_percent || 0)}%</td><td>− {money(security)}</td>
                     {tender.apply_gst && <td>− {money(gst)}</td>}<td>− {money(incomeTax)}</td><td>− {money(labourCess)}</td><td>− {money(cultureCessDeduction)}</td>
@@ -489,13 +488,13 @@ export default function TenderDetails() {
                     <td>{money(calculation.netPayable)}</td><td>{money(bill.hold_amount)}</td><td>{money(bill.amount_received)}</td><td>{formatDate(bill.received_date)}</td>
                     <td>{formatDate(bill.release_date)}</td><td>{bill.release_against || '—'}</td><td>{bill.release_remark || '—'}</td>
                   </tr>
-                )) : <tr><td colSpan={tender.apply_gst ? 29 : 28} className="print-no-bills">No {type.toLowerCase()}s recorded.</td></tr>}
+                )) : <tr><td colSpan={tender.apply_gst ? 28 : 27} className="print-no-bills">No {type.toLowerCase()}s recorded.</td></tr>}
               </tbody>
               {!!printBillRows[type]?.length && <tfoot><tr>
                 <th colSpan="6">{type} totals</th><th>{money(printBillRows[type].reduce((total, row) => total + row.calculation.workDone, 0))}</th>
-                <th />
+                <th>{money(printBillRows[type].reduce((total, row) => total + row.calculation.totalAdjustments, 0))}</th>
                 <th>+ {money(printBillRows[type].reduce((total, row) => total + row.calculation.cultureCess, 0))}</th>
-                <th>− {money(printBillRows[type].reduce((total, row) => total + row.calculation.rebate, 0))}</th><th />
+                <th>− {money(printBillRows[type].reduce((total, row) => total + row.calculation.rebate, 0))}</th>
                 <th>− {money(printBillRows[type].reduce((total, row) => total + row.calculation.previousBillAmount, 0))}</th>
                 <th>{money(printBillRows[type].reduce((total, row) => total + row.calculation.gross, 0))}</th><th /><th>− {money(printBillRows[type].reduce((total, row) => total + row.security, 0))}</th>
                 {tender.apply_gst && <th>− {money(printBillRows[type].reduce((total, row) => total + row.gst, 0))}</th>}

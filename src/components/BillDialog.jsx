@@ -14,8 +14,9 @@ const blankBill = (projectRebate = 0, projectNames = [], billType = 'Constructio
   description: '',
   bill_type: billType,
   work_done_amount: '0',
-  culture_cess_percent: '1',
+  culture_cess_percent: '5',
   rebate_percent: String(projectRebate ?? 2),
+  rebate_include_escalation: 'Exclude',
   escalation_type: 'None',
   escalation_amount: '0',
   escalation_adjustment_type: 'None',
@@ -138,6 +139,7 @@ export default function BillDialog({ tenderId, bill, projectNames = [], applyGst
               {percentFields.slice(0, 2).map(([name, label]) => (
                 <label className="field" key={name}><span>{label}</span><PercentInput name={name} value={values[name]} onChange={updateAmount} /></label>
               ))}
+              <label className="field"><span>Include escalation adjustment in rebate?</span><select name="rebate_include_escalation" value={values.rebate_include_escalation || 'Exclude'} onChange={update}><option value="Exclude">Exclude escalation adjustment</option><option value="Include">Include escalation adjustment</option></select></label>
               <label className="field"><span>Price adjustment (+/−)</span><select name="escalation_adjustment_type" value={values.escalation_adjustment_type} onChange={update}><option>None</option><option>Add</option><option>Deduct</option></select></label>
               <label className="field"><span>Price adjustment amount</span><AmountInput name="escalation_adjustment_amount" value={values.escalation_adjustment_amount} onChange={updateAmount} /></label>
               <label className="field"><span>Previous bill amount to deduct</span><AmountInput name="previous_bill_amount" value={values.previous_bill_amount} onChange={updateAmount} /></label>
@@ -145,12 +147,14 @@ export default function BillDialog({ tenderId, bill, projectNames = [], applyGst
             <div className="bill-calculation-summary">
               <BillAmount label="Total work done as per MB" value={calculation.workDone} />
               <BillAmount label={`Escalation adjustment (${values.escalation_type})`} value={calculation.escalationAdjustment} />
-              <BillAmount label="Work amount after escalation adjustment" value={calculation.workAfterPriceAdjustment} />
+              <BillAmount label="Work amount after escalation adjustment" value={calculation.workAfterEscalationAdjustment} />
               <BillAmount label={`Culture cess (${values.culture_cess_percent || 0}%)`} value={calculation.cultureCess} />
               <BillAmount label="Total before rebate" value={calculation.totalBeforeRebate} />
+              <BillAmount label="Rebate calculation base" value={calculation.rebateBase} />
               <BillAmount label={`Rebate (${values.rebate_percent || 0}%)`} value={calculation.rebate} />
               <BillAmount label="Amount after rebate" value={calculation.amountAfterRebate} />
               <BillAmount label={`Price adjustment (${values.escalation_adjustment_type})`} value={calculation.additionalEscalationAdjustment} />
+              <BillAmount label="Total after price adjustment" value={calculation.totalAfterPriceAdjustment} />
               <BillAmount label="Previous bill amount (−)" value={calculation.previousBillAmount} />
               <BillAmount label="Gross amount after price adjustment and previous bill deduction" value={calculation.gross} emphasize />
             </div>

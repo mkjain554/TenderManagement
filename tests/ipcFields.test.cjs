@@ -85,9 +85,11 @@ try {
     release_remark: 'Release after verification',
     escalation_adjustment_type: 'Add',
     escalation_adjustment_amount: '15',
+    escalation_type: 'Add',
+    escalation_amount: '20',
     work_done_amount: '500',
-    culture_cess_percent: '1',
     rebate_percent: '2',
+    rebate_include_escalation: 'Exclude',
   };
   const billResult = invoke('bills:create', tenderResult.id, billValues);
   let bill = database.prepare('SELECT * FROM bills WHERE id = ?').get(billResult.id);
@@ -100,6 +102,8 @@ try {
   assert.equal(bill.release_remark, 'Release after verification');
   assert.equal(bill.escalation_adjustment_type, 'Add');
   assert.equal(bill.escalation_adjustment_amount, 15);
+  assert.equal(bill.rebate_include_escalation, 'Exclude');
+  assert.equal(bill.culture_cess_percent, 5);
 
   invoke('bills:update', billResult.id, {
     ...billValues,
@@ -117,8 +121,22 @@ try {
     page: 1,
   });
   assert.equal(financialYearTenders.total, 1);
-  assert.equal(financialYearTenders.rows[0].total_gross, 479.9);
-  assert.equal(financialYearTenders.summary.total_gross, 479.9);
+  assert.equal(financialYearTenders.rows[0].total_gross, 520.48);
+  assert.equal(financialYearTenders.summary.total_gross, 520.48);
+  invoke('bills:update', billResult.id, {
+    ...billValues,
+    previous_bill_amount: '30',
+    release_date: '2026-06-06',
+    release_remark: 'Updated release remark',
+    rebate_include_escalation: 'Include',
+  });
+  bill = database.prepare('SELECT * FROM bills WHERE id = ?').get(billResult.id);
+  assert.equal(bill.rebate_include_escalation, 'Include');
+  const includedRebateTender = invoke('tenders:list', {
+    financialYear: '2024-25',
+    page: 1,
+  });
+  assert.equal(includedRebateTender.rows[0].total_gross, 520.08);
   assert.throws(() => invoke('tenders:list', { financialYear: '2024/25' }), /valid Financial Year/);
 
   const completion = invoke('projects:complete', tenderResult.id, {

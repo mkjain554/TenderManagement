@@ -114,7 +114,7 @@ export default function TenderList() {
       ) : (
         <div className="summary-strip">
           <div><span className="summary-icon">▤</span><div><span className="summary-label">TENDERS SHOWN</span><strong>{data.total}</strong><small>allotted records</small></div></div>
-          <div><span className="summary-icon summary-icon-green">₹</span><div><span className="summary-label">TOTAL VALUE</span><strong>{money(data.summary.total_value)}</strong><small>all tenders</small></div></div>
+          <div><span className="summary-icon summary-icon-green">₹</span><div><span className="summary-label">CONTRACT AMOUNT</span><strong>{money(data.summary.total_value)}</strong><small>all tenders</small></div></div>
           <div><span className="summary-icon summary-icon-pending">∑</span><div><span className="summary-label">GROSS BILLED</span><strong>{money(data.summary.total_gross)}</strong><small>calculated construction bills</small></div></div>
           <div><span className="summary-icon summary-icon-blue">✓</span><div><span className="summary-label">CONSTRUCTION RECEIVED</span><strong>{money(data.summary.total_received)}</strong><small>Construction bill</small></div></div>
           <div><span className="summary-icon summary-icon-hold">⌑</span><div><span className="summary-label">CONSTRUCTION HOLD</span><strong>{money(data.summary.total_hold)}</strong><small> bill holds</small></div></div>

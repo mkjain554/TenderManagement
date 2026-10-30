@@ -183,10 +183,12 @@ function validateBill(values, projectNames) {
   const billType = values?.bill_type || 'Construction bill';
   const escalationType = values?.escalation_type || 'None';
   const escalationAdjustmentType = values?.escalation_adjustment_type || 'None';
+  const rebateIncludeEscalation = values?.rebate_include_escalation ?? 'Exclude';
   const deductionType = values?.other_deduction_type || '';
   if (!billTypes.includes(billType)) throw new Error('Choose a valid bill type.');
   if (!escalationTypes.includes(escalationType)) throw new Error('Choose a valid escalation adjustment.');
   if (!escalationTypes.includes(escalationAdjustmentType)) throw new Error('Choose a valid escalation adjustment.');
+  if (!['Include', 'Exclude'].includes(rebateIncludeEscalation)) throw new Error('Choose whether the rebate includes the escalation adjustment.');
   if (!deductionTypes.includes(deductionType)) throw new Error('Choose a valid other deduction type.');
   const projectName = assertText(values?.project_name, 'Project name', 200);
   if (!projectNames.includes(projectName)) throw new Error('Choose a project listed under this tender.');
@@ -205,8 +207,9 @@ function validateBill(values, projectNames) {
     amount_received: assertAmount(values?.amount_received ?? 0, 'Amount received'),
     bill_type: billType,
     work_done_amount: assertAmount(values?.work_done_amount ?? 0, 'Work done amount'),
-    culture_cess_percent: assertPercent(values?.culture_cess_percent ?? 0, 'Culture cess'),
+    culture_cess_percent: assertPercent(values?.culture_cess_percent ?? 5, 'Culture cess'),
     rebate_percent: assertPercent(values?.rebate_percent ?? 0, 'Bill rebate'),
+    rebate_include_escalation: rebateIncludeEscalation,
     escalation_type: escalationType,
     escalation_amount: assertAmount(values?.escalation_amount ?? 0, 'Escalation amount'),
     escalation_adjustment_type: escalationAdjustmentType,
@@ -314,13 +317,31 @@ function registerIpc(db, dataDirectory, { onDatabaseReplaced, onProgress } = {})
             COUNT(*) AS bill_count,
             COALESCE(SUM(CASE WHEN b.bill_type = 'Construction bill' THEN
               MAX(0,
-                MAX(0, b.work_done_amount + CASE b.escalation_type
+                (
+                  MAX(0, b.work_done_amount + CASE b.escalation_type
                   WHEN 'Add' THEN b.escalation_amount
                   WHEN 'Deduct' THEN -b.escalation_amount
                   ELSE 0
-                END)
-                * (1 + b.culture_cess_percent / 100.0)
-                * (1 - b.rebate_percent / 100.0)
+                  END)
+                  * (1 + b.culture_cess_percent / 100.0)
+                )
+                - (
+                  (
+                    CASE b.rebate_include_escalation
+                      WHEN 'Include' THEN MAX(0, b.work_done_amount + CASE b.escalation_type
+                        WHEN 'Add' THEN b.escalation_amount
+                        WHEN 'Deduct' THEN -b.escalation_amount
+                        ELSE 0
+                      END)
+                      ELSE b.work_done_amount
+                    END
+                    + MAX(0, b.work_done_amount + CASE b.escalation_type
+                      WHEN 'Add' THEN b.escalation_amount
+                      WHEN 'Deduct' THEN -b.escalation_amount
+                      ELSE 0
+                    END) * b.culture_cess_percent / 100.0
+                  ) * b.rebate_percent / 100.0
+                )
                 + CASE b.escalation_adjustment_type
                   WHEN 'Add' THEN b.escalation_adjustment_amount
                   WHEN 'Deduct' THEN -b.escalation_adjustment_amount
@@ -581,6 +602,7 @@ function registerIpc(db, dataDirectory, { onDatabaseReplaced, onProgress } = {})
           INSERT INTO bills (
             id, tender_id, bill_name, project_name, bill_date, financial_year, description, hold_amount, release_amount, release_against, release_date, release_remark, amount_received,
             bill_type, work_done_amount, culture_cess_percent, rebate_percent,
+            rebate_include_escalation,
             escalation_type, escalation_amount, escalation_adjustment_type, escalation_adjustment_amount,
             previous_bill_number, previous_bill_amount, security_percent, cgst_percent, sgst_percent,
             income_tax_percent, labour_cess_percent, construction_cess_percent, tpa_amount,
@@ -590,6 +612,7 @@ function registerIpc(db, dataDirectory, { onDatabaseReplaced, onProgress } = {})
           VALUES (
             @id, @tender_id, @bill_name, @project_name, @bill_date, @financial_year, @description, @hold_amount, @release_amount, @release_against, @release_date, @release_remark, @amount_received,
             @bill_type, @work_done_amount, @culture_cess_percent, @rebate_percent,
+            @rebate_include_escalation,
             @escalation_type, @escalation_amount, @escalation_adjustment_type, @escalation_adjustment_amount,
             @previous_bill_number, @previous_bill_amount, @security_percent, @cgst_percent, @sgst_percent,
             @income_tax_percent, @labour_cess_percent, @construction_cess_percent, @tpa_amount,
@@ -616,6 +639,7 @@ function registerIpc(db, dataDirectory, { onDatabaseReplaced, onProgress } = {})
           amount_received = @amount_received,
           bill_type = @bill_type, work_done_amount = @work_done_amount,
           culture_cess_percent = @culture_cess_percent, rebate_percent = @rebate_percent,
+          rebate_include_escalation = @rebate_include_escalation,
           escalation_type = @escalation_type, escalation_amount = @escalation_amount,
           escalation_adjustment_type = @escalation_adjustment_type,
           escalation_adjustment_amount = @escalation_adjustment_amount,

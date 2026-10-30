@@ -5,10 +5,9 @@ export function financialYearForDate(value = new Date()) {
   return `${startYear}-${String((startYear + 1) % 100).padStart(2, '0')}`;
 }
 
-export function financialYearOptions(currentDate = new Date()) {
-  const currentStartYear = Number(financialYearForDate(currentDate).slice(0, 4));
-  return Array.from({ length: currentStartYear - 1999 + 5 }, (_, index) => {
-    const startYear = currentStartYear + 3 - index;
+export function financialYearOptions() {
+  return Array.from({ length: 31 }, (_, index) => {
+    const startYear = 2050 - index;
     return `${startYear}-${String((startYear + 1) % 100).padStart(2, '0')}`;
   });
 }
