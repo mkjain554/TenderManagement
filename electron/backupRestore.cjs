@@ -23,10 +23,25 @@ const REQUIRED_TABLES = [
   'bill_files',
   'project_completion_files',
 ];
+const RENAME_RETRY_ERRORS = new Set(['EACCES', 'EBUSY', 'EPERM']);
 
 function timestamp(date = new Date()) {
   const pad = (value) => String(value).padStart(2, '0');
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}_${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`;
+}
+
+async function renameWithRetry(source, destination) {
+  let delay = 50;
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    try {
+      await fs.promises.rename(source, destination);
+      return;
+    } catch (error) {
+      if (!RENAME_RETRY_ERRORS.has(error.code) || attempt === 7) throw error;
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      delay = Math.min(delay * 2, 500);
+    }
+  }
 }
 
 function sendProgress(onProgress, phase, percent, message) {
@@ -385,11 +400,11 @@ function createBackupManager({
       rollbackDirectory = path.join(path.dirname(dataDirectory), `data-before-restore-${crypto.randomUUID()}`);
       getDatabase().close();
       closedDatabase = true;
-      fs.renameSync(dataDirectory, rollbackDirectory);
-      fs.mkdirSync(dataDirectory, { recursive: true });
-      fs.renameSync(path.join(extractedDirectory, 'database.sqlite'), path.join(dataDirectory, 'database.sqlite'));
-      fs.renameSync(path.join(extractedDirectory, 'tenders'), path.join(dataDirectory, 'tenders'));
+      await renameWithRetry(dataDirectory, rollbackDirectory);
       swapped = true;
+      fs.mkdirSync(dataDirectory, { recursive: true });
+      await renameWithRetry(path.join(extractedDirectory, 'database.sqlite'), path.join(dataDirectory, 'database.sqlite'));
+      await renameWithRetry(path.join(extractedDirectory, 'tenders'), path.join(dataDirectory, 'tenders'));
 
       const importedDatabase = new Database(path.join(dataDirectory, 'database.sqlite'));
       try {
@@ -417,7 +432,7 @@ function createBackupManager({
         }
         try {
           if (swapped && fs.existsSync(dataDirectory)) fs.rmSync(dataDirectory, { recursive: true, force: true });
-          if (rollbackDirectory && fs.existsSync(rollbackDirectory)) fs.renameSync(rollbackDirectory, dataDirectory);
+          if (rollbackDirectory && fs.existsSync(rollbackDirectory)) await renameWithRetry(rollbackDirectory, dataDirectory);
           const recoveredDatabase = createDatabase(dataDirectory);
           replaceDatabase(recoveredDatabase);
         } catch (rollbackError) {
