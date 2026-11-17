@@ -364,7 +364,7 @@ function registerIpc(db, dataDirectory, { onDatabaseReplaced, onProgress } = {})
           COALESCE(SUM(total_received), 0) AS total_received,
           COALESCE(SUM(total_hold), 0) AS total_hold,
           COALESCE(SUM(total_gross), 0) AS total_gross,
-          COALESCE(SUM(MAX(0, bidding_amount - total_received)), 0) AS total_pending,
+          COALESCE(SUM(MAX(0, bidding_amount - total_gross)), 0) AS total_pending,
           COALESCE(SUM(tender_fee), 0) AS total_tender_fee,
           COALESCE(SUM(emd_amount), 0) AS total_emd,
           COALESCE(SUM(emd_refunded_amount), 0) AS total_emd_refunded
