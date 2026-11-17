@@ -123,6 +123,7 @@ try {
   assert.equal(financialYearTenders.total, 1);
   assert.equal(financialYearTenders.rows[0].total_gross, 520.48);
   assert.equal(financialYearTenders.summary.total_gross, 520.48);
+  assert.equal(financialYearTenders.summary.total_pending, 479.52);
   invoke('bills:update', billResult.id, {
     ...billValues,
     previous_bill_amount: '30',

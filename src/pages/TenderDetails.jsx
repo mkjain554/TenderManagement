@@ -94,6 +94,7 @@ export default function TenderDetails() {
     return {
       type,
       count: bills.length,
+      gross: bills.reduce((total, bill) => total + calculateBill(bill, Boolean(tender?.apply_gst)).gross, 0),
       netPayable: bills.reduce((total, bill) => total + calculateBill(bill, Boolean(tender?.apply_gst)).netPayable, 0),
       hold: bills.reduce((total, bill) => total + Number(bill.hold_amount || 0), 0),
       released: bills.reduce((total, bill) => total + Number(bill.release_amount || 0), 0),
@@ -105,6 +106,7 @@ export default function TenderDetails() {
     return {
       type,
       count: bills.length,
+      gross: bills.reduce((total, bill) => total + calculateBill(bill, Boolean(tender?.apply_gst)).gross, 0),
       netPayable: bills.reduce((total, bill) => total + calculateBill(bill, Boolean(tender?.apply_gst)).netPayable, 0),
       hold: bills.reduce((total, bill) => total + Number(bill.hold_amount || 0), 0),
       released: bills.reduce((total, bill) => total + Number(bill.release_amount || 0), 0),
@@ -300,7 +302,7 @@ export default function TenderDetails() {
             <div className="financial-row"><span>Net payable · {summary.count} bills</span><strong>{money(summary.netPayable)}</strong></div>
             <div className="financial-row"><span>Hold amount</span><strong>{money(summary.hold)}</strong></div>
             <div className="financial-row"><span>Amount received</span><strong className="received-value">{money(summary.received)}</strong></div>
-            {summary.type === 'Construction bill' && <div className="financial-total"><span>Construction balance pending</span><strong>{money(tender.outstanding)}</strong><small>Construction contract amount less construction bill receipts</small></div>}
+            {summary.type === 'Construction bill' && <div className="financial-total"><span>Construction balance pending</span><strong>{money(Math.max(0, tender.bidding_amount - summary.gross))}</strong><small>Construction contract amount less construction gross billed</small></div>}
             {summary.type === 'Maintenance bill' && <div className="financial-row"><span>Maintenance balance pending</span><strong>{money(Math.max(0, summary.netPayable - summary.received))}</strong></div>}
           </div>)}
         </section>
@@ -461,7 +463,7 @@ export default function TenderDetails() {
           {printBillSummaries.map((summary) => <div key={`${summary.type}-hold`}><span>{summary.type} on hold</span><strong>{money(summary.hold)}</strong></div>)}
           {printBillSummaries.map((summary) => <div key={`${summary.type}-released`}><span>{summary.type} released</span><strong>{money(summary.released)}</strong></div>)}
           {printBillSummaries.map((summary) => <div key={`${summary.type}-received`}><span>{summary.type} received</span><strong>{money(summary.received)}</strong></div>)}
-          <div><span>Construction balance pending</span><strong>{money(Math.max(0, tender.bidding_amount - printBillSummaries[0].received))}</strong></div>
+          <div><span>Construction balance pending</span><strong>{money(Math.max(0, tender.bidding_amount - printBillSummaries[0].gross))}</strong></div>
           <div><span>Maintenance balance pending</span><strong>{money(Math.max(0, printBillSummaries[1].netPayable - printBillSummaries[1].received))}</strong></div>
         </section>
         {['Construction bill', 'Maintenance bill'].filter((type) => !printSingleBill || printBills.some((bill) => bill.bill_type === type)).map((type) => (
