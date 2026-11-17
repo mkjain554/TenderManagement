@@ -15,7 +15,14 @@ export default function ProjectCompletionDialog({ tenderId, tenderName, completi
     [completions, tenderName],
   );
   const [securityAmount, setSecurityAmount] = useState(0);
-  const [values, setValues] = useState({ security_refund: '0', balance_security: '0', remark: '' });
+  const [values, setValues] = useState({
+    security_refund: '0',
+    security_refund_2: '0',
+    security_refund_date_1: '',
+    security_refund_date_2: '',
+    balance_security: '0',
+    remark: '',
+  });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -40,18 +47,29 @@ export default function ProjectCompletionDialog({ tenderId, tenderName, completi
     setValues(existing
       ? {
         security_refund: String(existing.security_refund),
+        security_refund_2: String(existing.security_refund_2 || 0),
+        security_refund_date_1: existing.security_refund_date_1 || '',
+        security_refund_date_2: existing.security_refund_date_2 || '',
         balance_security: String(existing.balance_security),
         remark: existing.remark || '',
       }
-      : { security_refund: '0', balance_security: String(securityAmount), remark: '' });
+      : {
+        security_refund: '0',
+        security_refund_2: '0',
+        security_refund_date_1: '',
+        security_refund_date_2: '',
+        balance_security: String(securityAmount),
+        remark: '',
+      });
   }, [existing, securityAmount]);
 
   function updateRefund(value) {
-    const refund = numericAmount(value);
     setValues((current) => ({
       ...current,
-      security_refund: value,
-      balance_security: String(Math.max(0, securityAmount - refund)),
+      [value.field]: value.value,
+      balance_security: String(Math.max(0, securityAmount
+        - numericAmount(value.field === 'security_refund' ? value.value : current.security_refund)
+        - numericAmount(value.field === 'security_refund_2' ? value.value : current.security_refund_2))),
     }));
   }
 
@@ -64,6 +82,9 @@ export default function ProjectCompletionDialog({ tenderId, tenderName, completi
         project_name: tenderName,
         security_amount: securityAmount,
         security_refund: numericAmount(values.security_refund),
+        security_refund_2: numericAmount(values.security_refund_2),
+        security_refund_date_1: values.security_refund_date_1,
+        security_refund_date_2: values.security_refund_date_2,
         balance_security: numericAmount(values.balance_security),
         remark: values.remark,
       });
@@ -95,13 +116,25 @@ export default function ProjectCompletionDialog({ tenderId, tenderName, completi
                 <small>Total Security deductions from this tender's saved Construction bills.</small>
               </label>
               <label className="field">
-                <span>Security refund</span>
-                <AmountInput name="security_refund" value={values.security_refund} onChange={(_, value) => updateRefund(value)} />
+                <span>Security refund 1</span>
+                <AmountInput name="security_refund" value={values.security_refund} onChange={(_, value) => updateRefund({ field: 'security_refund', value })} />
+              </label>
+              <label className="field">
+                <span>Refund date 1</span>
+                <input type="date" value={values.security_refund_date_1} onChange={(event) => setValues((current) => ({ ...current, security_refund_date_1: event.target.value }))} />
+              </label>
+              <label className="field">
+                <span>Security refund 2</span>
+                <AmountInput name="security_refund_2" value={values.security_refund_2} onChange={(_, value) => updateRefund({ field: 'security_refund_2', value })} />
+              </label>
+              <label className="field">
+                <span>Refund date 2</span>
+                <input type="date" value={values.security_refund_date_2} onChange={(event) => setValues((current) => ({ ...current, security_refund_date_2: event.target.value }))} />
               </label>
               <label className="field">
                 <span>Balance security</span>
                 <AmountInput name="balance_security" value={values.balance_security} onChange={(_, value) => setValues((current) => ({ ...current, balance_security: value }))} />
-                <small>Defaults to security amount less refund; you can adjust it.</small>
+                <small>Defaults to security amount less both refunds; you can adjust it.</small>
               </label>
               <label className="field field-wide">
                 <span>Remark</span>
